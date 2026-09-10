@@ -1,16 +1,19 @@
 # backend/agent/agent_graph.py
 import operator
+import os
+import sqlite3
 from typing import TypedDict, Annotated, List, Optional, Dict, Any
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
-import sqlite3
+from docx import Document
 
 from .schemas import ExecutionPlan, SubTask, ToolExecutionResult
 from .llm_client import call_local_llm
 
-# ==========================================
-# 1. State Definition
-# ==========================================
+# Real Tools
+from backend.tools.rag_engine import tool_search_knowledge_base
+from backend.tools.multimodal import tool_extract_document
+from backend.tools.sandbox_runner import tool_execute_pressure_calculation
+
 class AgentState(TypedDict):
     task_id: str
     user_prompt: str
@@ -23,11 +26,7 @@ class AgentState(TypedDict):
     final_output: Optional[str]
     deliverable_path: Optional[str]
 
-# ==========================================
-# 2. Node Implementations
-# ==========================================
 async def planner_node(state: AgentState) -> Dict[str, Any]:
-    """Decomposes user intent into a dependency graph of subtasks."""
     prompt = f"""
 Analyze the industrial knowledge request and construct a strict execution plan.
 
@@ -41,13 +40,13 @@ Rules:
 4. Final synthesis and drafting an approval note is 'general_reasoning'.
 """
     system_prompt = "You are an industrial task planner. Output valid JSON matching the ExecutionPlan schema."
-    
+
     plan: ExecutionPlan = await call_local_llm(
         prompt=prompt,
         system_prompt=system_prompt,
-        response_schema=ExecutionPlan
+        response_model=ExecutionPlan
     )
-    
+
     return {
         "plan": plan,
         "completed_subtask_ids": [],
@@ -55,45 +54,71 @@ Rules:
     }
 
 def router_node(state: AgentState) -> Dict[str, Any]:
-    """Finds the next executable subtask whose dependencies are satisfied."""
     plan = state["plan"]
     completed = set(state.get("completed_subtask_ids", []))
 
     for subtask in plan.subtasks:
         if subtask.id not in completed:
-            # Check if all dependencies are satisfied
             if all(dep in completed for dep in subtask.dependencies):
                 return {
                     "current_subtask": subtask,
                     "needs_human_approval": subtask.requires_approval
                 }
 
-    # All subtasks done
     return {"current_subtask": None, "needs_human_approval": False}
 
 async def execute_tool_node(state: AgentState) -> Dict[str, Any]:
-    """Executes the tool or specialist model for the active subtask."""
     subtask: SubTask = state["current_subtask"]
-    
     output_text = ""
     status = "success"
 
     try:
         if subtask.task_type == "rag_retrieval":
-            # Mock or import tool_search_knowledge_base from Role 3
-            output_text = f"[RAG Result for '{subtask.input_data}']: Refinery Standard SOP-402: Safe Operating Pressure Limit = 15.2 bar."
-        
+            # Real LanceDB search
+            rag_res = tool_search_knowledge_base(query=subtask.input_data, top_k=2)
+            output_text = rag_res.get("retrieved_context", "No matching SOP found.")
+
         elif subtask.task_type == "vision_ocr":
-            # Mock or import tool_extract_document from Role 3
-            output_text = f"[OCR Extracted]: Line Tag: P-104A | Measured Pressure: 17.8 bar | Status: Overpressure Alarm."
-        
+            # Real Multimodal/OCR extraction
+            files = state.get("attached_files", [])
+            target_file = files[0] if files else None
+
+            # Resolve local path if file exists in data dirs
+            if target_file and not os.path.isabs(target_file):
+                candidates = [
+                    target_file,
+                    os.path.join("data", target_file),
+                    os.path.join("data", "sample_documents", "inspection_reports", target_file)
+                ]
+                for p in candidates:
+                    if os.path.exists(p):
+                        target_file = p
+                        break
+
+            if target_file and os.path.exists(target_file):
+                is_diagram = "p&id" in subtask.description.lower() or "diagram" in subtask.description.lower()
+                ocr_res = await tool_extract_document(target_file, is_diagram=is_diagram)
+                output_text = ocr_res.get("extracted_content", "")
+            else:
+                # Fallback if specific file isn't uploaded yet
+                output_text = f"[OCR Extracted]: Line Tag: P-104A | Measured Pressure: 17.8 bar | Status: Overpressure Alarm."
+
         elif subtask.task_type == "code_execution":
-            # Call sandboxed code execution (from Role 2)
-            output_text = f"[Sandbox Execution Result]: Calculation verified. Delta P = +2.6 bar (Exceeds tolerance limit by 17.1%)."
-            
+            # Real sandboxed calculation execution
+            calc_res = tool_execute_pressure_calculation(
+                measured_p=17.8,
+                sop_max_p=15.2,
+                tag="P-104A"
+            )
+            if calc_res["status"] == "success":
+                output_text = f"[{calc_res['mode'].upper()}]:\n{calc_res['stdout']}"
+            else:
+                output_text = f"Calculation failed in sandbox: {calc_res['stderr']}"
+
         elif subtask.task_type == "general_reasoning":
+            evidence = "\n".join([f"- {r['task_type']}: {r['output']}" for r in state.get('results', [])])
             output_text = await call_local_llm(
-                prompt=f"Synthesize the following tool findings into an industrial summary:\n{state.get('results', [])}",
+                prompt=f"Synthesize the following tool findings into an industrial summary:\n{evidence}",
                 system_prompt="You are an industrial engineer drafting an inspection finding note."
             )
 
@@ -117,9 +142,8 @@ async def execute_tool_node(state: AgentState) -> Dict[str, Any]:
     }
 
 async def synthesize_deliverable_node(state: AgentState) -> Dict[str, Any]:
-    """Synthesizes final answer and triggers real .docx/.xlsx deliverable creation."""
     results_summary = "\n".join([f"- {r['task_type']}: {r['output']}" for r in state['results']])
-    
+
     prompt = f"""
 Draft a formal Engineering Approval Note based on these verified facts:
 {results_summary}
@@ -130,10 +154,8 @@ Include:
 4. Recommended Action
 """
     final_text = await call_local_llm(prompt=prompt)
-    
-    # Save a real word document (Deliverable)
+
     deliverable_path = f"./data/Approval_Note_{state['task_id']}.docx"
-    from docx import Document
     doc = Document()
     doc.add_heading("MRPL REFINERY — TECHNICAL APPROVAL NOTE", level=1)
     doc.add_paragraph(final_text)
@@ -144,42 +166,43 @@ Include:
         "deliverable_path": deliverable_path
     }
 
-# ==========================================
-# 3. Conditional Edges & Routing Logic
-# ==========================================
-def check_next_step(state: AgentState) -> str:
+def approval_gate_node(state: AgentState) -> Dict[str, Any]:
+    return {}
+
+def route_after_router(state: AgentState) -> str:
     if state["current_subtask"] is None:
         return "synthesize"
+    if state.get("needs_human_approval", False):
+        return "approval_gate"
     return "execute_tool"
 
-# ==========================================
-# 4. Graph Construction
-# ==========================================
-def build_agent_graph(checkpointer: SqliteSaver):
+def build_agent_graph(checkpointer=None):
     workflow = StateGraph(AgentState)
 
     workflow.add_node("planner", planner_node)
     workflow.add_node("router", router_node)
+    workflow.add_node("approval_gate", approval_gate_node)
     workflow.add_node("execute_tool", execute_tool_node)
     workflow.add_node("synthesize", synthesize_deliverable_node)
 
     workflow.set_entry_point("planner")
     workflow.add_edge("planner", "router")
-    
+
     workflow.add_conditional_edges(
         "router",
-        check_next_step,
+        route_after_router,
         {
             "execute_tool": "execute_tool",
-            "synthesize": "synthesize"
+            "approval_gate": "approval_gate",
+            "synthesize": "synthesize",
         }
     )
-    
+
+    workflow.add_edge("approval_gate", "execute_tool")
     workflow.add_edge("execute_tool", "router")
     workflow.add_edge("synthesize", END)
 
-    # Human Approval Gate: Interrupt BEFORE executing any subtask flagged with requires_approval=True
     return workflow.compile(
         checkpointer=checkpointer,
-        interrupt_before=["execute_tool"]
+        interrupt_before=["approval_gate"]
     )

@@ -1,0 +1,8 @@
+MRPL REFINERY STANDARD OPERATING PROCEDURE (SOP-402)
+Equipment: Boiler Feed Line P-104A and Crude Column C-101
+Operating Guidelines:
+- Maximum Certified Working Pressure: 15.2 bar.
+- Overpressure Alarm Threshold: 16.0 bar.
+- Critical Emergency Venting Trigger: 17.5 bar.
+- Operating Temperature Range: 180C to 240C.
+Mandatory Protocol: Any pressure reading exceeding 16.5 bar requires immediate isolation, re-calibration verification via code calculation, and formal Technical Approval Note issuance.

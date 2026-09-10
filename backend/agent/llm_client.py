@@ -1,46 +1,62 @@
 # backend/agent/llm_client.py
 import json
 import httpx
-from typing import Type, TypeVar
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from typing import Type, TypeVar, Optional, Union
 
 T = TypeVar("T", bound=BaseModel)
-OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+
+OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
+DEFAULT_MODEL = "qwen2.5:7b-instruct-q4_K_M"
+
+class LLMClientError(Exception):
+    pass
 
 async def call_local_llm(
     prompt: str,
-    system_prompt: str = "You are a precise industrial engineering AI assistant.",
-    model: str = "qwen2.5:7b-instruct-q4_K_M",
-    response_schema: Optional[Type[T]] = None,
-    temperature: float = 0.1
-) -> Any:
-    """Calls local Ollama instance with optional guided JSON schema enforcement."""
+    system_prompt: str = "You are an autonomous industrial task decomposition engine. Follow schema rules strictly.",
+    response_model: Optional[Type[T]] = None,
+    model: str = DEFAULT_MODEL,
+    temperature: float = 0.0,
+) -> Union[str, T]:
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+
     payload = {
         "model": model,
-        "system": system_prompt,
-        "prompt": prompt,
+        "messages": messages,
         "stream": False,
         "options": {
             "temperature": temperature,
-            "num_ctx": 16384
-        }
+            "num_ctx": 4096,
+        },
     }
-    
-    if response_schema:
-        payload["format"] = "json"
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload)
-        response.raise_for_status()
-        raw_text = response.json().get("response", "")
+    # Pass JSON format instruction
+    if response_model is not None:
+        payload["format"] = response_model.model_json_schema()
 
-    if response_schema:
+    # Bump timeout to 300s to accommodate local CPU inference
+    async with httpx.AsyncClient(timeout=300.0) as client:
         try:
-            parsed_json = json.loads(raw_text)
-            return response_schema.model_validate(parsed_json)
-        except Exception as e:
-            # Fallback/retry parsing
-            print(f"[Schema Parsing Error] {e}. Raw response: {raw_text}")
-            raise ValueError(f"LLM failed to output valid schema: {e}")
+            res = await client.post(OLLAMA_URL, json=payload)
+            res.raise_for_status()
+        except httpx.RequestError as exc:
+            raise LLMClientError(f"Network error connecting to Ollama: {exc}") from exc
+        except httpx.HTTPStatusError as exc:
+            raise LLMClientError(f"Ollama returned HTTP {exc.response.status_code}: {exc.response.text}") from exc
 
-    return raw_text
+    data = res.json()
+    message_content = data.get("message", {}).get("content", "").strip()
+
+    if response_model is not None:
+        try:
+            return response_model.model_validate_json(message_content)
+        except ValidationError as val_err:
+            raise LLMClientError(
+                f"Model output failed validation: {val_err}\nRaw output: {message_content}"
+            ) from val_err
+
+    return message_content
