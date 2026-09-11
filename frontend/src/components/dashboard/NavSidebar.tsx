@@ -128,13 +128,30 @@ export function NavSidebar({
             type="button"
             className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/60"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary font-mono text-[11px] text-primary-foreground">
-              MS
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] text-foreground"> Odomos </span>
-              <span className="block truncate text-[11px] text-muted-foreground">Local workspace</span>
-            </span>
+            {(() => {
+              let displayName = "User";
+              let role = "operator";
+              try {
+                const raw = localStorage.getItem("lex_user");
+                if (raw) {
+                  const u = JSON.parse(raw);
+                  displayName = u.display_name || u.username || "User";
+                  role = u.role || "operator";
+                }
+              } catch {}
+              const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary font-mono text-[11px] text-primary-foreground">
+                    {initials}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] text-foreground">{displayName}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{role} · Local workspace</span>
+                  </span>
+                </>
+              );
+            })()}
             <MoreHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>

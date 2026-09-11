@@ -127,7 +127,7 @@ function Console() {
             )}
 
             <div className="shrink-0 border-t border-border p-3">
-              <Composer disabled={busy} onSend={(text, attachments) => store.sendTask(text, attachments)} />
+              <Composer disabled={busy} onSend={(text, attachments, files) => store.sendTask(text, attachments, files)} />
             </div>
           </section>
         </main>

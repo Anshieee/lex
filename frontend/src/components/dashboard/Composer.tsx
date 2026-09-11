@@ -6,17 +6,18 @@ export function Composer({
   onSend,
 }: {
   disabled: boolean;
-  onSend: (text: string, attachments: string[]) => void;
+  onSend: (text: string, attachments: string[], files: File[]) => void;
 }) {
   const [text, setText] = useState("");
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const submit = () => {
     const t = text.trim();
     if (!t || disabled) return;
-    onSend(t, files);
+    const names = files.map((f) => f.name);
+    onSend(t, names, files);
     setText("");
     setFiles([]);
   };
@@ -32,16 +33,16 @@ export function Composer({
         e.preventDefault();
         setDragging(false);
         if (disabled) return;
-        setFiles((f) => [...f, ...Array.from(e.dataTransfer.files).map((x) => x.name)]);
+        setFiles((f) => [...f, ...Array.from(e.dataTransfer.files)]);
       }}
       className={`panel-raised p-2.5 transition-colors ${dragging ? "border-primary/70" : ""}`}
     >
       {files.length > 0 && (
         <ul className="mb-2 flex flex-wrap gap-1.5">
           {files.map((f, i) => (
-            <li key={`${f}-${i}`} className="flex items-center gap-1.5 rounded border border-border bg-muted px-2 py-1 text-[11px]">
-              <span className="max-w-40 truncate">{f}</span>
-              <button type="button" aria-label={`Remove ${f}`} onClick={() => setFiles((x) => x.filter((_, j) => j !== i))}>
+            <li key={`${f.name}-${i}`} className="flex items-center gap-1.5 rounded border border-border bg-muted px-2 py-1 text-[11px]">
+              <span className="max-w-40 truncate">{f.name}</span>
+              <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((x) => x.filter((_, j) => j !== i))}>
                 <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
               </button>
             </li>
@@ -92,7 +93,7 @@ export function Composer({
         accept=".pdf,.docx,.jpg,.jpeg,.png"
         className="sr-only"
         onChange={(e) => {
-          setFiles((f) => [...f, ...Array.from(e.target.files ?? []).map((x) => x.name)]);
+          setFiles((f) => [...f, ...Array.from(e.target.files ?? [])]);
           e.target.value = "";
         }}
       />

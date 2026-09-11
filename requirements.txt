@@ -1,0 +1,38 @@
+# FastAPI + ASGI
+fastapi
+uvicorn[standard]
+
+# Data validation
+pydantic
+
+# LangGraph agent orchestration
+langgraph
+langgraph-checkpoint-sqlite
+
+# Async HTTP client (Ollama calls)
+httpx
+
+# Vector DB (RAG)
+lancedb
+pyarrow
+
+# Embeddings (CPU)
+sentence-transformers
+
+# PDF processing
+pypdf
+
+# Image / OCR
+Pillow
+pytesseract
+
+# Document generation
+python-docx
+openpyxl
+
+# Auth
+bcrypt
+PyJWT
+
+# Multipart file upload support
+python-multipart

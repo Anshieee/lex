@@ -25,9 +25,12 @@ export interface ApprovalRequest {
 export interface Deliverable {
   id: string;
   filename: string;
-  fileType: "docx" | "pdf" | "txt";
+  fileType: "docx" | "pdf" | "txt" | "xlsx";
   sizeLabel: string;
   content: string;
+  /** Optional secondary deliverable (e.g. xlsx alongside docx) */
+  secondaryUrl?: string;
+  secondaryFilename?: string;
 }
 
 export interface NetworkEvent {
@@ -42,7 +45,7 @@ export interface ActiveModel {
   id: string;
   name: string;
   role: string;
-  state: "loaded" | "idle-on-demand";
+  state: "loaded" | "idle" | "unavailable";
 }
 
 export type ThreadItem =

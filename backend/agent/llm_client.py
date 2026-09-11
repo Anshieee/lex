@@ -7,7 +7,7 @@ from typing import Type, TypeVar, Optional, Union
 T = TypeVar("T", bound=BaseModel)
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-DEFAULT_MODEL = "qwen2.5:7b-instruct-q4_K_M"
+DEFAULT_MODEL = "qwen2.5:7b"
 
 class LLMClientError(Exception):
     pass
