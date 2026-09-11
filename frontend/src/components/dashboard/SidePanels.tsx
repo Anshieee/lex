@@ -11,13 +11,14 @@ export function ActiveModels({ models, busy }: { models: ActiveModel[]; busy: bo
       <ul className="space-y-1.5">
         {models.map((m) => {
           const loaded = m.state === "loaded";
+          const unavailable = m.state === "unavailable";
           return (
             <li
               key={m.id}
-              className="flex items-center gap-2.5 rounded-md border border-border bg-background/50 px-2.5 py-2"
+              className={`flex items-center gap-2.5 rounded-md border border-border bg-background/50 px-2.5 py-2 ${unavailable ? "opacity-50" : ""}`}
             >
               <span
-                className={`status-dot ${loaded ? "status-dot--ok" : "status-dot--idle"} ${busy && loaded ? "status-dot--pulse" : ""}`}
+                className={`status-dot ${loaded ? "status-dot--ok" : unavailable ? "status-dot--fail" : "status-dot--idle"} ${busy && loaded ? "status-dot--pulse" : ""}`}
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-mono text-[11.5px] text-foreground">{m.name}</p>
@@ -25,10 +26,10 @@ export function ActiveModels({ models, busy }: { models: ActiveModel[]; busy: bo
               </div>
               <span
                 className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9.5px] uppercase ${
-                  loaded ? "bg-ok/15 text-ok" : "bg-muted text-muted-foreground"
+                  loaded ? "bg-ok/15 text-ok" : unavailable ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"
                 }`}
               >
-                {loaded ? "loaded" : "on-demand"}
+                {loaded ? "loaded" : unavailable ? "n/a" : "idle"}
               </span>
             </li>
           );
