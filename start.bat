@@ -199,15 +199,15 @@ echo [  OK]  Backend launched (http://localhost:8000)
 
 REM ── Start Frontend in a new window ─────────────────────────────────
 echo [INFO]  Starting frontend dev server...
-start "LEX Frontend" cmd /k "cd /d %CD%\frontend && npm run dev"
+start "LEX Frontend" cmd /k "cd /d %CD%\frontend && npm run dev -- --port 8081"
 timeout /t 3 /nobreak >nul
-echo [  OK]  Frontend launched (http://localhost:8080)
+echo [  OK]  Frontend launched (http://localhost:8081)
 
 echo.
 echo ╔══════════════════════════════════════════════════════════╗
 echo ║  LEX Sovereign AI Workbench is LIVE!                    ║
 echo ║                                                          ║
-echo ║  Frontend  -^> http://localhost:8080                      ║
+echo ║  Frontend  -^> http://localhost:8081                      ║
 echo ║  Backend   -^> http://localhost:8000                      ║
 echo ║  API Docs  -^> http://localhost:8000/docs                 ║
 echo ║                                                          ║

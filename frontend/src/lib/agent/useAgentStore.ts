@@ -249,10 +249,54 @@ export function useAgentStore(): AgentStore {
   }, [pushNetwork, addDeliverable]);
 
   const approve = useCallback(async (approvalId: string) => {
+    // ── Instant UI feedback ─────────────────────────────────────────
+    // Update state and mark approval card as decided BEFORE the API call
     setState("running");
     setActiveApprovalId(null);
+
+    // Immediately mark the approval card as "approved" in the thread
+    setThread((prev) =>
+      prev.map((item) => {
+        if (item.type === "approval" && item.approval.id === approvalId) {
+          return {
+            ...item,
+            approval: { ...item.approval, decision: "approved" },
+          };
+        }
+        return item;
+      })
+    );
+
+    // Add a processing indicator to the thread so user knows work is happening
+    const processingId = uid("processing");
+    setThread((prev) => [
+      ...prev,
+      {
+        id: processingId,
+        type: "trace",
+        steps: [
+          {
+            id: "proc-auth",
+            kind: "route" as const,
+            label: "Operator approval confirmed ✓",
+            model: "system",
+            status: "done" as const,
+          },
+          {
+            id: "proc-exec",
+            kind: "generate" as const,
+            label: "Executing approved subtask — generating deliverable…",
+            model: "qwen2.5:7b-instruct",
+            status: "running" as const,
+          },
+        ],
+        at: Date.now(),
+      },
+    ]);
+
     pushNetwork(`127.0.0.1:8000/api/tasks/${approvalId}/approve`, "Operator authorization transmitted");
 
+    // ── Background API call ─────────────────────────────────────────
     try {
       const res = await fetch(`${API_BASE}/api/tasks/${approvalId}/approve`, {
         method: "POST",
@@ -266,7 +310,7 @@ export function useAgentStore(): AgentStore {
       }
       const data = await res.json();
 
-      // Mark all trace steps as completed in the UI view
+      // Mark ALL trace steps (including the processing indicator) as done
       setThread((prev) =>
         prev.map((item) => {
           if (item.type === "trace") {
@@ -274,14 +318,11 @@ export function useAgentStore(): AgentStore {
               ...item,
               steps: item.steps.map((st) => ({
                 ...st,
-                status: "done",
+                status: "done" as const,
+                ...(st.id === "proc-exec"
+                  ? { label: "Subtask execution complete ✓" }
+                  : {}),
               })),
-            };
-          }
-          if (item.type === "approval" && item.approval.id === approvalId) {
-            return {
-              ...item,
-              approval: { ...item.approval, decision: "approved" },
             };
           }
           return item;
@@ -292,6 +333,22 @@ export function useAgentStore(): AgentStore {
       addDeliverable(approvalId, data.state?.final_output || "Approval note generated.");
       pushNetwork(`127.0.0.1:8000/api/tasks/${approvalId}/download`, "Deliverable finalized on disk");
     } catch (err: any) {
+      // Mark the processing step as failed instead of spinning forever
+      setThread((prev) =>
+        prev.map((item) => {
+          if (item.id === processingId && item.type === "trace") {
+            return {
+              ...item,
+              steps: item.steps.map((st) =>
+                st.id === "proc-exec"
+                  ? { ...st, status: "done" as const, label: `Execution failed: ${(err as Error).message}` }
+                  : st
+              ),
+            };
+          }
+          return item;
+        })
+      );
       setState("failed");
       setThread((prev) => [
         ...prev,

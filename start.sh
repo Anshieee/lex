@@ -226,12 +226,12 @@ fi
 
 # ── Start Frontend ───────────────────────────────────────────────────
 info "Starting frontend dev server..."
-(cd frontend && npm run dev) &
+(cd frontend && npm run dev -- --port 8081) &
 FRONTEND_PID=$!
 sleep 3
 
 if kill -0 "$FRONTEND_PID" 2>/dev/null; then
-    ok "Frontend running at ${BOLD}http://localhost:8080${NC}"
+    ok "Frontend running at ${BOLD}http://localhost:8081${NC}"
 else
     warn "Frontend may have picked a different port — check output above"
 fi
@@ -240,7 +240,7 @@ echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}║  ${GREEN}✓ LEX Sovereign AI Workbench is LIVE!${NC}${BOLD}                  ║${NC}"
 echo -e "${BOLD}║                                                          ║${NC}"
-echo -e "${BOLD}║  Frontend  → ${CYAN}http://localhost:8080${NC}${BOLD}                       ║${NC}"
+echo -e "${BOLD}║  Frontend  → ${CYAN}http://localhost:8081${NC}${BOLD}                       ║${NC}"
 echo -e "${BOLD}║  Backend   → ${CYAN}http://localhost:8000${NC}${BOLD}                       ║${NC}"
 echo -e "${BOLD}║  API Docs  → ${CYAN}http://localhost:8000/docs${NC}${BOLD}                  ║${NC}"
 echo -e "${BOLD}║                                                          ║${NC}"
