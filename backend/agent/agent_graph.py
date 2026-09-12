@@ -46,6 +46,7 @@ class AgentState(TypedDict):
     # ── New fields for conversational response + metrics ──
     response_text: Optional[str]
     generation_metrics: Optional[Dict[str, Any]]
+    selected_model: Optional[str]
 
 async def planner_node(state: AgentState) -> Dict[str, Any]:
     t0 = time.time()
@@ -69,9 +70,10 @@ Rules:
 4. Use 'general_reasoning' as a final synthesis step to compile everything together.
 5. Only use 'code_execution' if the task requires actual calculations or data processing.
 6. Keep the plan focused — typically 2-4 subtasks.
+7. CRITICAL: Do NOT hallucinate tasks or implicitly assume goals. Your plan must precisely reflect only what the user requested.
 """
-    system_prompt = "You are an industrial task planner. Output valid JSON matching the ExecutionPlan schema. Create practical, focused execution plans."
-    planner_model = get_model_for_task("planning")
+    system_prompt = "You are an industrial task planner. Output valid JSON matching the ExecutionPlan schema. Create practical, highly predictable, and strictly focused execution plans."
+    planner_model = state.get("selected_model") or get_model_for_task("planning")
 
     llm_resp = await call_local_llm_with_metrics(
         prompt=prompt,
@@ -154,7 +156,7 @@ async def execute_tool_node(state: AgentState) -> Dict[str, Any]:
     subtask: SubTask = state["current_subtask"]
     output_text = ""
     status = "success"
-    model_used = get_model_for_task(subtask.task_type)
+    model_used = state.get("selected_model") or get_model_for_task(subtask.task_type)
     step_metrics = None
 
     try:
@@ -309,9 +311,10 @@ Instructions:
 3. Include all relevant findings from the research.
 4. End with Conclusions and Recommendations if appropriate.
 5. Use professional technical language.
-6. Be thorough but concise.
+6. CRITICAL: Be strictly precise. Only include facts based on the user's explicit request and the research findings. Do not add generic filler.
 """
-    doc_resp = await call_local_llm_with_metrics(prompt=prompt)
+    synth_model = state.get("selected_model") or get_model_for_task("general_reasoning")
+    doc_resp = await call_local_llm_with_metrics(prompt=prompt, model=synth_model)
     final_text = doc_resp.content
 
     # Generate a meaningful document title from the prompt

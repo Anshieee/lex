@@ -89,6 +89,7 @@ app.add_middleware(
 class SubmitTaskRequest(BaseModel):
     prompt: str
     files: Optional[List[str]] = []
+    model: Optional[str] = None
 
 class ApproveTaskRequest(BaseModel):
     approved: bool
@@ -177,6 +178,7 @@ async def submit_task(req: SubmitTaskRequest, user: dict = Depends(get_current_u
         "deliverable_path": None,
         "response_text": None,
         "generation_metrics": None,
+        "selected_model": req.model,
     }
 
     try:
@@ -246,7 +248,7 @@ async def submit_task_stream(req: SubmitTaskRequest, user: dict = Depends(get_cu
         )
 
         if intent_result.intent == "conversational":
-            async for event in _stream_conversational(task_id, req.prompt, user["username"]):
+            async for event in _stream_conversational(task_id, req.prompt, user["username"], req.model):
                 yield event
         else:
             async for event in _stream_agentic(task_id, req, user["username"]):
@@ -263,7 +265,7 @@ async def submit_task_stream(req: SubmitTaskRequest, user: dict = Depends(get_cu
     )
 
 
-async def _stream_conversational(task_id: str, prompt: str, username: str):
+async def _stream_conversational(task_id: str, prompt: str, username: str, selected_model: Optional[str] = None):
     """Stream a conversational response directly from Ollama — no LangGraph pipeline."""
     yield _sse_event("step_start", {
         "node": "conversational",
@@ -275,15 +277,15 @@ async def _stream_conversational(task_id: str, prompt: str, username: str):
     final_metrics = None
 
     try:
-        async for chunk in stream_local_llm(
-            prompt=prompt,
-            system_prompt=(
+        kwargs = {"prompt": prompt, "temperature": 0.3, "system_prompt": (
                 "You are LEX, a sovereign on-premise AI assistant for industrial operations. "
                 "You are helpful, concise, and technically precise. You run entirely on local hardware "
                 "with no external API calls. Respond naturally using markdown formatting when appropriate."
-            ),
-            temperature=0.3,
-        ):
+            )}
+        if selected_model:
+            kwargs["model"] = selected_model
+
+        async for chunk in stream_local_llm(**kwargs):
             if isinstance(chunk, LLMMetrics):
                 final_metrics = chunk
             else:
@@ -356,6 +358,7 @@ async def _stream_agentic(task_id: str, req: SubmitTaskRequest, username: str):
         "deliverable_path": None,
         "response_text": None,
         "generation_metrics": None,
+        "selected_model": req.model,
     }
 
     try:

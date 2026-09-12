@@ -8,7 +8,8 @@ from typing import Type, TypeVar, Optional, Union
 T = TypeVar("T", bound=BaseModel)
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-DEFAULT_MODEL = "qwen2.5:7b"
+DEFAULT_MODEL = "qwen2.5:7b-instruct"
+CONVERSATIONAL_MODEL = "qwen2.5:3b"
 
 class LLMClientError(Exception):
     pass
@@ -143,7 +144,7 @@ async def call_local_llm_with_metrics(
 async def stream_local_llm(
     prompt: str,
     system_prompt: str = "You are LEX, a sovereign on-premise AI assistant for industrial operations. You are helpful, concise, and technically precise.",
-    model: str = DEFAULT_MODEL,
+    model: str = CONVERSATIONAL_MODEL,
     temperature: float = 0.3,
 ):
     """

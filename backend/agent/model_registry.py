@@ -26,15 +26,23 @@ class ModelSpec:
 AVAILABLE_MODELS: List[ModelSpec] = [
     ModelSpec(
         id="planner",
-        ollama_tag="qwen2.5:7b",
+        ollama_tag="qwen2.5:7b-instruct",
         display_name="Qwen 2.5 7B Instruct",
         role="Planner / Orchestrator / Synthesis",
         task_types=["planning", "general_reasoning"],
         ctx_window=4096,
     ),
     ModelSpec(
+        id="conversational",
+        ollama_tag="qwen2.5:3b",
+        display_name="Qwen 2.5 3B Instruct",
+        role="Fast Conversational Responses",
+        task_types=["conversational"],
+        ctx_window=4096,
+    ),
+    ModelSpec(
         id="coder",
-        ollama_tag="qwen2.5:7b",
+        ollama_tag="qwen2.5:7b-instruct",
         display_name="Qwen 2.5 7B Instruct (Code Mode)",
         role="Code Generation & Verification",
         task_types=["code_execution"],

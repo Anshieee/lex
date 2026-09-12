@@ -30,6 +30,8 @@ export interface AgentStore {
   kbDocCount: number;
   activeApprovalId: string | null;
   metrics: GenerationMetrics;
+  selectedModel: string | null;
+  setSelectedModel: (model: string | null) => void;
   sendTask: (text: string, attachments: string[], files?: File[]) => Promise<void>;
   approve: (approvalId: string) => Promise<void>;
   reject: (approvalId: string, reason: string) => void;
@@ -55,6 +57,7 @@ export function useAgentStore(): AgentStore {
   const [kbDocCount, setKbDocCount] = useState(1);
   const [activeApprovalId, setActiveApprovalId] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<GenerationMetrics>(INITIAL_METRICS);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const currentTaskIdRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -239,6 +242,7 @@ export function useAgentStore(): AgentStore {
         body: JSON.stringify({
           prompt: text,
           files: uploadedFilenames.length > 0 ? uploadedFilenames : ["boiler_scan.pdf"],
+          model: selectedModel || undefined,
         }),
       });
 
@@ -573,6 +577,7 @@ export function useAgentStore(): AgentStore {
         body: JSON.stringify({
           prompt: text,
           files: uploadedFilenames.length > 0 ? uploadedFilenames : ["boiler_scan.pdf"],
+          model: selectedModel || undefined,
         }),
       });
 
@@ -910,6 +915,8 @@ export function useAgentStore(): AgentStore {
     kbDocCount,
     activeApprovalId,
     metrics,
+    selectedModel,
+    setSelectedModel,
     sendTask,
     approve,
     reject,

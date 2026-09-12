@@ -1,12 +1,19 @@
 import { useRef, useState } from "react";
-import { Loader2, Paperclip, SendHorizontal, X } from "lucide-react";
+import { Loader2, Paperclip, SendHorizontal, X, Settings2 } from "lucide-react";
+import type { ActiveModel } from "@/lib/agent/types";
 
 export function Composer({
   disabled,
   onSend,
+  models,
+  selectedModel,
+  onSelectModel,
 }: {
   disabled: boolean;
   onSend: (text: string, attachments: string[], files: File[]) => void;
+  models: ActiveModel[];
+  selectedModel: string | null;
+  onSelectModel: (model: string | null) => void;
 }) {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -97,9 +104,29 @@ export function Composer({
           e.target.value = "";
         }}
       />
-      <p className="mt-1.5 text-[10px] text-muted-foreground">
-        Enter to send · Shift+Enter for a new line · PDF, DOCX, JPG, PNG supported
-      </p>
+      <div className="mt-1.5 flex items-center justify-between">
+        <p className="text-[10px] text-muted-foreground">
+          Enter to send · Shift+Enter for a new line · PDF, DOCX, JPG, PNG supported
+        </p>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Settings2 className="h-3 w-3" />
+          <select
+            value={selectedModel || ""}
+            onChange={(e) => onSelectModel(e.target.value || null)}
+            disabled={disabled}
+            className="rounded bg-transparent px-1 py-0.5 outline-none hover:bg-muted focus:ring-1 focus:ring-ring disabled:opacity-50"
+          >
+            <option value="">Auto-Select Model</option>
+            {models
+              .filter((m) => m.state === "loaded" && m.id !== "embedder" && m.id !== "sandbox")
+              .map((m) => (
+                <option key={m.id} value={m.name}>
+                  {m.name} ({m.role})
+                </option>
+              ))}
+          </select>
+        </div>
+      </div>
     </div>
   );
 }

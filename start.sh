@@ -175,7 +175,8 @@ pull_if_missing() {
     fi
 }
 
-pull_if_missing "qwen2.5:7b"
+pull_if_missing "qwen2.5:7b-instruct"
+pull_if_missing "qwen2.5:3b"
 pull_if_missing "moondream"
 
 echo ""

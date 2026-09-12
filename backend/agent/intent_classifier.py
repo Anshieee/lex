@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal, List, Optional
 
-from .llm_client import call_local_llm, DEFAULT_MODEL
+from .llm_client import call_local_llm, DEFAULT_MODEL, CONVERSATIONAL_MODEL
 
 
 @dataclass
@@ -142,7 +142,7 @@ async def _llm_classify(prompt: str) -> IntentResult:
         result = await call_local_llm(
             prompt=f"Classify this user message:\n\n\"{prompt}\"",
             system_prompt=_CLASSIFIER_SYSTEM_PROMPT,
-            model=DEFAULT_MODEL,
+            model=CONVERSATIONAL_MODEL,
             temperature=0.0,
         )
         cleaned = result.strip().lower().rstrip(".")

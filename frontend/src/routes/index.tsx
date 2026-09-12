@@ -130,7 +130,13 @@ function Console() {
             <div className="shrink-0 border-t border-border">
               <StatusBar metrics={store.metrics} />
               <div className="p-3 pt-1.5">
-                <Composer disabled={busy} onSend={(text, attachments, files) => store.sendTask(text, attachments, files)} />
+                <Composer
+                  disabled={busy}
+                  onSend={(text, attachments, files) => store.sendTask(text, attachments, files)}
+                  models={store.models}
+                  selectedModel={store.selectedModel}
+                  onSelectModel={store.setSelectedModel}
+                />
               </div>
             </div>
           </section>

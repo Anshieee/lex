@@ -163,7 +163,8 @@ if %errorlevel%==0 (
 
 REM Pull models (ollama pull is idempotent — skips if already present)
 echo [INFO]  Ensuring required models are pulled...
-ollama pull qwen2.5:7b
+ollama pull qwen2.5:7b-instruct
+ollama pull qwen2.5:3b
 ollama pull moondream
 echo [  OK]  All models ready
 
