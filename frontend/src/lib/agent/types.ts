@@ -48,12 +48,25 @@ export interface ActiveModel {
   state: "loaded" | "idle" | "unavailable";
 }
 
+/** Live generation metrics surfaced to the StatusBar */
+export interface GenerationMetrics {
+  elapsedMs: number;
+  currentStep: string;
+  currentNode: string;
+  totalTokensIn: number;
+  totalTokensOut: number;
+  tokensPerSecond: number;
+  isRunning: boolean;
+}
+
 export type ThreadItem =
   | { id: string; type: "user"; text: string; attachments: string[]; at: number }
   | { id: string; type: "agent"; text: string; at: number }
   | { id: string; type: "trace"; steps: TraceStep[]; at: number }
   | { id: string; type: "approval"; approval: ApprovalRequest; at: number }
   | { id: string; type: "deliverable"; deliverable: Deliverable; at: number }
+  | { id: string; type: "response"; text: string; at: number }
+  | { id: string; type: "streaming"; text: string; isComplete: boolean; at: number }
   | { id: string; type: "failure"; text: string; at: number };
 
 export type AgentEvent =
@@ -66,3 +79,17 @@ export type AgentEvent =
   | { type: "deliverable"; deliverable: Deliverable }
   | { type: "task_failed"; reason: string }
   | { type: "task_completed" };
+
+/** SSE event types from the backend streaming endpoint */
+export type SSEEventType =
+  | "task_started"
+  | "intent_classified"
+  | "step_start"
+  | "step_complete"
+  | "token_delta"
+  | "token_done"
+  | "approval_required"
+  | "response_text"
+  | "deliverable_ready"
+  | "done"
+  | "error";

@@ -6,6 +6,7 @@ import { GalaxyBackground } from "@/components/dashboard/GalaxyBackground";
 import { GalaxyBrain } from "@/components/dashboard/GalaxyBrain";
 import { Header } from "@/components/dashboard/Header";
 import { ChatThread } from "@/components/dashboard/ChatThread";
+import { StatusBar } from "@/components/dashboard/StatusBar";
 import { Composer } from "@/components/dashboard/Composer";
 import { NavSidebar } from "@/components/dashboard/NavSidebar";
 import { ModelDrawer } from "@/components/dashboard/ModelDrawer";
@@ -126,8 +127,11 @@ function Console() {
               </div>
             )}
 
-            <div className="shrink-0 border-t border-border p-3">
-              <Composer disabled={busy} onSend={(text, attachments, files) => store.sendTask(text, attachments, files)} />
+            <div className="shrink-0 border-t border-border">
+              <StatusBar metrics={store.metrics} />
+              <div className="p-3 pt-1.5">
+                <Composer disabled={busy} onSend={(text, attachments, files) => store.sendTask(text, attachments, files)} />
+              </div>
             </div>
           </section>
         </main>
@@ -156,13 +160,13 @@ function Console() {
                   icon={Zap}
                   label="No approval"
                   disabled={busy}
-                  onClick={() => store.sendTask("Summarise the latest indexed report.", [], { requireApproval: false })}
+                  onClick={() => store.sendTask("Summarise the latest indexed report.", [])}
                 />
                 <DemoButton
                   icon={AlertTriangle}
                   label="Simulate failure"
                   disabled={busy}
-                  onClick={() => store.sendTask("Process the full archive corpus.", [], { shouldFail: true })}
+                  onClick={() => store.sendTask("Process the full archive corpus.", [])}
                 />
                 <DemoButton icon={RotateCcw} label="Reset demo" disabled={false} onClick={store.reset} />
               </div>

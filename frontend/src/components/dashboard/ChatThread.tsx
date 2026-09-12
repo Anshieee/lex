@@ -4,6 +4,7 @@ import type { ThreadItem } from "@/lib/agent/types";
 import { TraceStepView } from "./TraceStepView";
 import { ApprovalCard } from "./ApprovalCard";
 import { DeliverableCard } from "./DeliverableCard";
+import { ResponseBubble, StreamingBubble } from "./ResponseBubble";
 
 export function ChatThread({
   thread,
@@ -76,6 +77,10 @@ export function ChatThread({
             );
           case "approval":
             return <ApprovalCard key={item.id} approval={item.approval} onApprove={onApprove} onReject={onReject} />;
+          case "response":
+            return <ResponseBubble key={item.id} text={item.text} />;
+          case "streaming":
+            return <StreamingBubble key={item.id} text={item.text} isComplete={item.isComplete} />;
           case "deliverable":
             return <DeliverableCard key={item.id} deliverable={item.deliverable} />;
           case "failure":
