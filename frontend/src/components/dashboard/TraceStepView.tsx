@@ -37,6 +37,23 @@ function StatusIcon({ status }: { status: TraceStep["status"] }) {
   }
 }
 
+function ModeBadge({ mode }: { mode?: string }) {
+  if (!mode) return null;
+  const isGVisor = mode.toLowerCase().includes("gvisor");
+  return (
+    <span
+      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-mono shrink-0 ${
+        isGVisor
+          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+          : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+      }`}
+      title={mode}
+    >
+      {isGVisor ? "gVisor" : "Local"}
+    </span>
+  );
+}
+
 export function TraceStepView({ step }: { step: TraceStep }) {
   const [open, setOpen] = useState(false);
   const Icon = kindIcon[step.kind];
@@ -55,6 +72,7 @@ export function TraceStepView({ step }: { step: TraceStep }) {
         <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate text-xs text-foreground">{step.label}</span>
         {step.model && <span className="hidden shrink-0 font-mono text-[10px] text-muted-foreground md:inline">{step.model}</span>}
+        <ModeBadge mode={step.mode} />
         {hasRaw &&
           (open ? (
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />

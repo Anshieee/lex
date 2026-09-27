@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { RotateCcw, Play, AlertTriangle, Zap } from "lucide-react";
+import { RotateCcw, Play, Zap, Settings, SlidersHorizontal } from "lucide-react";
 import { useAgentStore } from "@/lib/agent/useAgentStore";
 import { GalaxyBackground } from "@/components/dashboard/GalaxyBackground";
 import { GalaxyBrain } from "@/components/dashboard/GalaxyBrain";
@@ -9,6 +9,8 @@ import { ChatThread } from "@/components/dashboard/ChatThread";
 import { Composer } from "@/components/dashboard/Composer";
 import { NavSidebar } from "@/components/dashboard/NavSidebar";
 import { ModelDrawer } from "@/components/dashboard/ModelDrawer";
+import { PromptCompressionModal } from "@/components/dashboard/PromptCompressionModal";
+import { ChatSettingsDrawer } from "@/components/dashboard/ChatSettingsDrawer";
 
 const DEV_CONTROLS = import.meta.env.DEV;
 
@@ -39,7 +41,20 @@ function Console() {
   const busy = store.state === "running" || store.state === "approval_required";
   const [navOpen, setNavOpen] = useState(false);
   const [modelsOpen, setModelsOpen] = useState(false);
+  const [compressionOpen, setCompressionOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const hasChat = store.thread.length > 0;
+
+  // Chat settings state
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [temperature, setTemperature] = useState(0.7);
+  const [topP, setTopP] = useState(0.9);
+  const [maxTokens, setMaxTokens] = useState(4096);
+  const [useDefaultTemperature, setUseDefaultTemperature] = useState(true);
+  const [useDefaultTopP, setUseDefaultTopP] = useState(true);
+  const [useDefaultMaxTokens, setUseDefaultMaxTokens] = useState(true);
+  const [dictationModel, setDictationModel] = useState("auto");
 
   // Escape closes any open drawer
   useEffect(() => {
@@ -47,6 +62,8 @@ function Console() {
       if (e.key === "Escape") {
         setNavOpen(false);
         setModelsOpen(false);
+        setCompressionOpen(false);
+        setSettingsOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -98,6 +115,8 @@ function Console() {
             onMenu={() => setNavOpen((v) => !v)}
             onModels={() => setModelsOpen((v) => !v)}
             modelsOpen={modelsOpen}
+            onSettings={() => setCompressionOpen(true)}
+            onChatSettings={() => setSettingsOpen((v) => !v)}
           />
 
           <section className="panel relative flex min-h-0 flex-1 flex-col" aria-label="Task workspace">
@@ -156,19 +175,43 @@ function Console() {
                   icon={Zap}
                   label="No approval"
                   disabled={busy}
-                  onClick={() => store.sendTask("Summarise the latest indexed report.", [], { requireApproval: false })}
-                />
-                <DemoButton
-                  icon={AlertTriangle}
-                  label="Simulate failure"
-                  disabled={busy}
-                  onClick={() => store.sendTask("Process the full archive corpus.", [], { shouldFail: true })}
+                  onClick={() => store.sendTask("Summarise the latest indexed report.", [])}
                 />
                 <DemoButton icon={RotateCcw} label="Reset demo" disabled={false} onClick={store.reset} />
               </div>
             </section>
           )}
         </ModelDrawer>
+
+        <PromptCompressionModal
+          open={compressionOpen}
+          onClose={() => setCompressionOpen(false)}
+          config={store.promptCompression}
+          onSave={store.setPromptCompression}
+        />
+        <ChatSettingsDrawer
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          models={store.models}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          systemPrompt={systemPrompt}
+          onSystemPromptChange={setSystemPrompt}
+          temperature={temperature}
+          onTemperatureChange={setTemperature}
+          topP={topP}
+          onTopPChange={setTopP}
+          maxTokens={maxTokens}
+          onMaxTokensChange={setMaxTokens}
+          useDefaultTemperature={useDefaultTemperature}
+          onUseDefaultTemperatureChange={setUseDefaultTemperature}
+          useDefaultTopP={useDefaultTopP}
+          onUseDefaultTopPChange={setUseDefaultTopP}
+          useDefaultMaxTokens={useDefaultMaxTokens}
+          onUseDefaultMaxTokensChange={setUseDefaultMaxTokens}
+          dictationModel={dictationModel}
+          onDictationModelChange={setDictationModel}
+        />
       </div>
     </>
   );

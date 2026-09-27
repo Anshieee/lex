@@ -10,20 +10,12 @@ DB_DIR = os.path.abspath("./data/lancedb_store")
 os.makedirs(DB_DIR, exist_ok=True)
 
 # FORCE CPU EXECUTION: Protects GPU VRAM for the 7B generative models
-# Force offline local loading from cache to prevent egress / network hangs
-# On first run, this will download the model (~33MB) then use cache afterwards.
-try:
-    embed_model = SentenceTransformer(
-        "BAAI/bge-small-en-v1.5",
-        device="cpu",
-        model_kwargs={"local_files_only": True}
-    )
-except Exception:
-    # First run: download and cache the model
-    embed_model = SentenceTransformer(
-        "BAAI/bge-small-en-v1.5",
-        device="cpu",
-    )
+# Use local_files_only=True - model must be pre-downloaded during build/container creation
+embed_model = SentenceTransformer(
+    "BAAI/bge-small-en-v1.5",
+    device="cpu",
+    model_kwargs={"local_files_only": True}
+)
 
 # Connect to embedded LanceDB
 db = lancedb.connect(DB_DIR)

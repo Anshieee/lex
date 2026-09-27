@@ -1,0 +1,84 @@
+#!/usr/bin/env nft -f
+# infra/nftables.rules
+# Kernel-level network isolation for sovereign AI workbench
+# Default policy: DROP all egress packets
+# Explicit allow-rules for loopback and trusted internal subnets only
+#
+# Apply with: sudo nft -f infra/nftables.rules
+# Persist: sudo nft list ruleset > /etc/nftables.conf
+# Enable at boot: sudo systemctl enable nftables
+
+# Flush existing ruleset
+flush ruleset
+
+# Define variables for local networks
+define LOCAL_LOOPBACK = 127.0.0.1
+define LOCAL_RFC1918_1 = 192.168.0.0/16
+define LOCAL_RFC1918_2 = 10.0.0.0/8
+define LOCAL_RFC1918_3 = 172.16.0.0/12
+
+# Table for inet (IPv4 + IPv6)
+table inet sovereign {
+
+    # Chain for outbound traffic filtering
+    chain egress_filter {
+        type filter hook output priority 0; policy drop;
+
+        # Allow loopback traffic (required for local services: Ollama, vLLM, FastAPI, frontend)
+        ip daddr $LOCAL_LOOPBACK accept comment "Allow localhost all ports"
+        ip6 daddr ::1 accept comment "Allow IPv6 localhost"
+
+        # Allow traffic to local RFC1918 subnets (internal network)
+        ip daddr $LOCAL_RFC1918_1 accept comment "Allow 192.168.0.0/16"
+        ip daddr $LOCAL_RFC1918_2 accept comment "Allow 10.0.0.0/8"
+        ip daddr $LOCAL_RFC1918_3 accept comment "Allow 172.16.0.0/12"
+        ip6 daddr fc00::/7 accept comment "Allow IPv6 ULA (fc00::/7)"
+
+        # Allow established/related connections (return traffic for allowed outbound)
+        ct state established,related accept comment "Allow established/related"
+
+        # Allow DNS to local resolver (if running local DNS)
+        # ip daddr $LOCAL_LOOPBACK udp dport 53 accept comment "Allow local DNS UDP"
+        # ip daddr $LOCAL_LOOPBACK tcp dport 53 accept comment "Allow local DNS TCP"
+
+        # Log dropped packets for audit
+        log prefix "SOVEREIGN EGRESS DROP: " level info
+
+        # Default: drop everything else (implicit by policy drop)
+    }
+
+    # Optional: Chain for inbound filtering (if needed)
+    chain ingress_filter {
+        type filter hook input priority 0; policy accept;
+
+        # Allow loopback
+        iifname "lo" accept
+
+        # Allow established/related
+        ct state established,related accept
+
+        # Allow SSH from local subnet (adjust as needed)
+        # ip saddr $LOCAL_RFC1918_1 tcp dport 22 accept comment "Allow SSH from 192.168/16"
+
+        # Drop invalid packets
+        ct state invalid drop
+    }
+
+    # Chain for forward (if acting as router — typically not needed)
+    chain forward_filter {
+        type filter hook forward priority 0; policy drop;
+    }
+}
+
+# IPv6 table (if needed separately)
+table ip6 sovereign6 {
+    chain egress_filter {
+        type filter hook output priority 0; policy drop;
+
+        ip6 daddr ::1 accept comment "Allow IPv6 localhost"
+        ip6 daddr fc00::/7 accept comment "Allow IPv6 ULA"
+        ct state established,related accept
+
+        log prefix "SOVEREIGN EGRESS DROP v6: " level info
+    }
+}

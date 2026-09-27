@@ -1,0 +1,25 @@
+# infra/Dockerfile.sandbox
+# Sandbox base image for secure AI code execution
+# Build: docker build -t local-sandbox:latest -f infra/Dockerfile.sandbox .
+# Run with gVisor: docker run --rm --runtime=runsc --network=none --memory=512m --cpus=1.0 local-sandbox:latest
+
+FROM python:3.11-slim
+
+# Install scientific computing packages for data analysis tasks
+RUN pip install --no-cache-dir \
+    numpy \
+    pandas \
+    openpyxl \
+    scipy \
+    matplotlib \
+    requests \
+    pyyaml
+
+# Set working directory
+WORKDIR /sandbox
+
+# Run as non-root user for additional isolation
+USER nobody
+
+# Default command - can be overridden
+CMD ["python3", "--version"]

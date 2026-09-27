@@ -1,0 +1,27 @@
+{
+  "name": "@lex/connect",
+  "version": "1.0.0",
+  "description": "CLI tool to configure air-gapped development harnesses to connect to local LEX vLLM endpoint",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "lex-connect": "index.js"
+  },
+  "scripts": {
+    "test": "node index.js --test"
+  },
+  "keywords": [
+    "lex",
+    "ai",
+    "local",
+    "vllm",
+    "air-gapped",
+    "cli"
+  ],
+  "author": "LEX Workbench Team",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "local-ip-url": "^1.0.7"
+  }
+}

@@ -6,6 +6,7 @@ Uses /proc/net/tcp to inspect actual TCP connections without requiring root.
 import os
 import socket
 import struct
+import platform
 from typing import Dict, List, Any
 from datetime import datetime
 
@@ -50,11 +51,11 @@ def _is_loopback_or_local(hex_addr: str) -> bool:
     return hex_addr in (_LOOPBACK_HEX, "00000000")
 
 
-def get_connections() -> List[Dict[str, Any]]:
-    """Read all TCP connections from /proc/net/tcp."""
+def _read_proc_net_file(filepath: str) -> List[Dict[str, Any]]:
+    """Read connections from a /proc/net/ file (tcp, tcp6, udp, udp6)."""
     connections = []
     try:
-        with open("/proc/net/tcp", "r") as f:
+        with open(filepath, "r") as f:
             lines = f.readlines()[1:]  # skip header
 
         for line in lines:
@@ -82,14 +83,50 @@ def get_connections() -> List[Dict[str, Any]]:
                 "service": _SAFE_PORTS.get(local_port) or _SAFE_PORTS.get(remote_port) or None,
             })
     except FileNotFoundError:
-        # Not on Linux (e.g. macOS) — fall back to ss
         pass
 
     return connections
 
 
+def get_connections() -> List[Dict[str, Any]]:
+    """Read all TCP connections from /proc/net/tcp and /proc/net/tcp6.
+
+    Returns empty list on non-Linux platforms - caller must check platform.
+    """
+    if platform.system() != "Linux":
+        # Not on Linux - cannot read /proc/net/*
+        return []
+
+    connections = []
+
+    # IPv4 TCP
+    connections.extend(_read_proc_net_file("/proc/net/tcp"))
+
+    # IPv6 TCP
+    connections.extend(_read_proc_net_file("/proc/net/tcp6"))
+
+    return connections
+
+
 def get_network_status() -> Dict[str, Any]:
-    """Return a full network sovereignty report."""
+    """Return a full network sovereignty report.
+
+    On non-Linux, returns explicit error with sovereign=false and warning.
+    """
+    if platform.system() != "Linux":
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "total_connections": 0,
+            "active_connections": 0,
+            "local_connections": 0,
+            "outbound_connections": 0,
+            "sovereign": False,
+            "connections": [],
+            "outbound_details": [],
+            "error": "Network monitoring only supported on Linux (/proc/net/tcp not available)",
+            "warning": f"Running on {platform.system()}. Cannot verify sovereign operation. Do not trust sovereign=true on non-Linux."
+        }
+
     all_conns = get_connections()
 
     # Filter only ESTABLISHED or SYN_SENT (active/outgoing)

@@ -34,6 +34,39 @@ frontend/.vinxi/
 Thumbs.db
 .vscode/
 .idea/
-
+backend/data/lancedb_store/
 backend/data/*.db
 *.db
+
+# OpenRig sandbox tooling - not part of the lex project
+Dockerfile
+entrypoint.sh
+run-sandbox.sh
+openrig-specs/
+.openrig/
+.openrig-cli/
+.claude/
+.codex/
+.agents/
+.mcp.json
+.tmp-extract/
+.tmp_analysis/
+
+# Node build artifacts
+node-v20.18.0-linux-x64/
+node-v20.tar.xz
+node-v20*
+better-sqlite3-*.tgz
+frontend/node_modules/
+frontend/.wrangler/
+
+# Python
+backend/.venv/
+backend/venv/
+venv/
+
+
+
+
+
+

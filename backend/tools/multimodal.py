@@ -6,6 +6,7 @@ from PIL import Image
 import pytesseract
 from pypdf import PdfReader
 from typing import Dict, Any
+import tempfile
 
 from .sanitizer import sanitize_untrusted_text
 
@@ -23,6 +24,48 @@ def extract_text_from_pdf(file_path: str) -> str:
         return "\n".join(extracted).strip()
     except Exception:
         return ""
+
+
+def render_pdf_to_images(file_path: str, dpi: int = 200) -> list[str]:
+    """
+    Render PDF pages to images for OCR/VLM processing.
+    Uses pymupdf (fitz) if available, falls back to pdf2image.
+    Returns list of temporary image file paths.
+    """
+    images = []
+    try:
+        # Try pymupdf (fitz) first - faster and no poppler dependency
+        import fitz
+        doc = fitz.open(file_path)
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            # Render at specified DPI
+            mat = fitz.Matrix(dpi / 72.0, dpi / 72.0)
+            pix = page.get_pixmap(matrix=mat)
+
+            # Save to temp file
+            with tempfile.NamedTemporaryFile(suffix=f"_page{page_num}.png", delete=False) as tmp:
+                pix.save(tmp.name)
+                images.append(tmp.name)
+        doc.close()
+        return images
+    except ImportError:
+        pass
+
+    try:
+        # Fallback to pdf2image (requires poppler)
+        from pdf2image import convert_from_path
+        pages = convert_from_path(file_path, dpi=dpi)
+        for i, page in enumerate(pages):
+            with tempfile.NamedTemporaryFile(suffix=f"_page{i}.png", delete=False) as tmp:
+                page.save(tmp.name, "PNG")
+                images.append(tmp.name)
+        return images
+    except ImportError:
+        raise RuntimeError(
+            "Neither pymupdf (fitz) nor pdf2image is available. "
+            "Install one: pip install pymupdf  # or  pip install pdf2image (requires poppler)"
+        )
 
 def extract_text_via_ocr(image_path: str) -> str:
     """Tier 2: Fast CPU OCR for typed scan sheets."""
@@ -64,25 +107,62 @@ async def tool_extract_document(file_path: str, is_diagram: bool = False) -> Dic
     ext = os.path.splitext(file_name)[1].lower()
     raw_text = ""
     tier_used = "native_pdf"
+    temp_image_paths = []
 
-    if ext == ".pdf":
-        raw_text = extract_text_from_pdf(file_path)
-        if len(raw_text) < 50:  # If PDF has little to no embedded text, it's a scan
-            tier_used = "vlm_diagram" if is_diagram else "cpu_ocr"
-            # Note: For multi-page PDF images in prod, render page to image first.
-            raw_text = f"[Scanned PDF detected. Processed via {tier_used}]"
-    elif ext in [".png", ".jpg", ".jpeg", ".bmp", ".tiff"]:
-        if is_diagram:
-            tier_used = "vlm_diagram"
-            raw_text = await extract_via_vlm(file_path)
-        else:
-            tier_used = "cpu_ocr"
-            raw_text = extract_text_via_ocr(file_path)
-            if len(raw_text) < 30:  # OCR confidence low/empty -> escalate to VLM
-                tier_used = "vlm_fallback"
+    try:
+        if ext == ".pdf":
+            raw_text = extract_text_from_pdf(file_path)
+            if len(raw_text) < 50:  # If PDF has little to no embedded text, it's a scan
+                tier_used = "vlm_diagram" if is_diagram else "cpu_ocr"
+                # Render PDF pages to images for OCR/VLM
+                try:
+                    image_paths = render_pdf_to_images(file_path)
+                    temp_image_paths = image_paths
+
+                    if is_diagram:
+                        # For diagrams, use VLM on each page
+                        results = []
+                        for img_path in image_paths:
+                            result = await extract_via_vlm(img_path)
+                            results.append(result)
+                        raw_text = "\n---\n".join(results)
+                    else:
+                        # For scanned text, use OCR on each page
+                        results = []
+                        for img_path in image_paths:
+                            result = extract_text_via_ocr(img_path)
+                            results.append(result)
+                        raw_text = "\n---\n".join(results)
+
+                        # If OCR quality is low, escalate to VLM
+                        if len(raw_text) < 30:
+                            tier_used = "vlm_fallback"
+                            results = []
+                            for img_path in image_paths:
+                                result = await extract_via_vlm(img_path)
+                                results.append(result)
+                            raw_text = "\n---\n".join(results)
+                except RuntimeError as e:
+                    return {"status": "failed", "error": f"PDF rendering failed: {str(e)}"}
+        elif ext in [".png", ".jpg", ".jpeg", ".bmp", ".tiff"]:
+            if is_diagram:
+                tier_used = "vlm_diagram"
                 raw_text = await extract_via_vlm(file_path)
-    else:
-        return {"status": "failed", "error": f"Unsupported file extension: {ext}"}
+            else:
+                tier_used = "cpu_ocr"
+                raw_text = extract_text_via_ocr(file_path)
+                if len(raw_text) < 30:  # OCR confidence low/empty -> escalate to VLM
+                    tier_used = "vlm_fallback"
+                    raw_text = await extract_via_vlm(file_path)
+        else:
+            return {"status": "failed", "error": f"Unsupported file extension: {ext}"}
+    finally:
+        # Clean up temp image files
+        for img_path in temp_image_paths:
+            try:
+                os.unlink(img_path)
+            except Exception:
+                pass
 
     # Pass extracted content through the security sanitizer
     safe_payload, attack_detected = sanitize_untrusted_text(raw_text, file_name)

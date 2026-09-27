@@ -9,8 +9,13 @@ import {
   Plug,
   MoreHorizontal,
   X,
+  Cpu,
+  Filter,
+  BarChart3,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "@tanstack/react-router";
 
 const NAV = [
   { label: "New chat", icon: SquarePen },
@@ -18,6 +23,10 @@ const NAV = [
   { label: "Projects", icon: FolderClosed },
   { label: "Scheduled", icon: Clock },
   { label: "Plugins", icon: Plug },
+  { label: "Models", icon: Cpu },
+  { label: "Analytics", icon: BarChart3 },
+  { label: "Audit Logs", icon: Filter },
+  { label: "Models Breakdown", icon: Database },
   { label: "More", icon: MoreHorizontal },
 ];
 
@@ -41,8 +50,29 @@ export function NavSidebar({
   onClose: () => void;
   onNewChat: () => void;
 }) {
+  const navigate = useNavigate();
   const [active, setActive] = useState(0);
   const [activeRecent, setActiveRecent] = useState(0);
+
+  const handleNavClick = (item: { label: string; icon: typeof SquarePen }, i: number) => {
+    setActive(i);
+    if (item.label === "New chat") {
+      onNewChat();
+      onClose();
+    } else if (item.label === "Models") {
+      navigate({ to: "/models" });
+      onClose();
+    } else if (item.label === "Analytics") {
+      navigate({ to: "/analytics" });
+      onClose();
+    } else if (item.label === "Audit Logs") {
+      navigate({ to: "/audit" });
+      onClose();
+    } else if (item.label === "Models Breakdown") {
+      navigate({ to: "/models-breakdown" });
+      onClose();
+    }
+  };
 
   return (
     <>
@@ -77,13 +107,7 @@ export function NavSidebar({
               <li key={item.label}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setActive(i);
-                    if (item.label === "New chat") {
-                      onNewChat();
-                      onClose();
-                    }
-                  }}
+                  onClick={() => handleNavClick(item, i)}
                   aria-current={active === i ? "page" : undefined}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] transition-colors",

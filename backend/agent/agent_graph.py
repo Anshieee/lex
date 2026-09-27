@@ -2,6 +2,7 @@
 import operator
 import os
 import re
+import html
 import sqlite3
 import time
 from typing import TypedDict, Annotated, List, Optional, Dict, Any
@@ -10,14 +11,33 @@ from docx import Document
 from openpyxl import Workbook
 from backend.tools.audit_logger import log_step
 
-from .schemas import ExecutionPlan, SubTask, ToolExecutionResult
-from .llm_client import call_local_llm
-from .model_registry import get_model_for_task
+from .schemas import ExecutionPlan, SubTask, ToolExecutionResult, RoutingWeights, PromptCompressionConfig
+from .mock_llm_client import call_local_llm_with_mock as call_local_llm
+from .model_registry import get_model_for_task, get_model_for_task_with_weights, calculate_routing_scores
 
 # Real Tools
 from backend.tools.rag_engine import tool_search_knowledge_base
 from backend.tools.multimodal import tool_extract_document
 from backend.tools.sandbox_runner import tool_execute_pressure_calculation, run_code_in_sandbox
+
+
+def sanitize_untrusted_text(text: str, max_len: int = 10000) -> str:
+    """Sanitize untrusted user input to prevent prompt injection.
+
+    - HTML escape to neutralize markup
+    - Limit length to prevent context window exhaustion
+    - Remove potential control sequences
+    """
+    if not text:
+        return ""
+    # HTML escape
+    sanitized = html.escape(text)
+    # Limit length
+    if len(sanitized) > max_len:
+        sanitized = sanitized[:max_len] + "... [truncated]"
+    # Remove null bytes and other control chars
+    sanitized = sanitized.replace('\x00', '').replace('\r', '\n')
+    return sanitized
 
 class AgentState(TypedDict):
     task_id: str
@@ -30,14 +50,21 @@ class AgentState(TypedDict):
     needs_human_approval: bool
     final_output: Optional[str]
     deliverable_path: Optional[str]
+    # User preferences carried through the entire LangGraph execution
+    routing_weights: Optional[RoutingWeights]
+    prompt_compression: Optional[PromptCompressionConfig]
 
 async def planner_node(state: AgentState) -> Dict[str, Any]:
     t0 = time.time()
+    # Sanitize user input to prevent prompt injection
+    sanitized_prompt = sanitize_untrusted_text(state['user_prompt'])
+    sanitized_files = [sanitize_untrusted_text(f) for f in state.get('attached_files', [])]
+
     prompt = f"""
 Analyze the industrial knowledge request and construct a strict execution plan.
 
-User Request: {state['user_prompt']}
-Attached Files: {state.get('attached_files', [])}
+User Request: {sanitized_prompt}
+Attached Files: {sanitized_files}
 
 Rules:
 1. If the prompt requires reading a scanned file or diagram, create a 'vision_ocr' subtask.
@@ -110,7 +137,9 @@ async def execute_tool_node(state: AgentState) -> Dict[str, Any]:
     subtask: SubTask = state["current_subtask"]
     output_text = ""
     status = "success"
-    model_used = get_model_for_task(subtask.task_type)
+    # Use dynamic routing weights if available
+    routing_weights = state.get("routing_weights")
+    model_used = get_model_for_task_with_weights(subtask.task_type, routing_weights)
 
     try:
         if subtask.task_type == "rag_retrieval":
@@ -139,9 +168,12 @@ async def execute_tool_node(state: AgentState) -> Dict[str, Any]:
             if target_file and os.path.exists(target_file):
                 is_diagram = "p&id" in subtask.description.lower() or "diagram" in subtask.description.lower()
                 ocr_res = await tool_extract_document(target_file, is_diagram=is_diagram)
-                output_text = ocr_res.get("extracted_content", "")
+                if ocr_res.get("status") == "failed":
+                    output_text = f"OCR failed: {ocr_res.get('error', 'Unknown error')}"
+                else:
+                    output_text = ocr_res.get("extracted_content", "")
             else:
-                output_text = f"[OCR Extracted]: Line Tag: P-104A | Measured Pressure: 17.8 bar | Status: Overpressure Alarm."
+                output_text = f"OCR error: No valid file found for vision_ocr task. Attached files: {files}"
 
         elif subtask.task_type == "code_execution":
             # Dynamic: extract values from prior subtask results

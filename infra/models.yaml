@@ -1,0 +1,42 @@
+version: "1.0"
+engine: "vllm"
+base_url: "http://127.0.0.1:8000/v1"
+
+models:
+  reasoning:
+    name: "qwen2.5:7b-instruct-q4_K_M"
+    role: "general_reasoning_and_planning"
+    context_length: 32768
+    resident: true
+    vram_usage_mb: 4700
+    intelligence: 85
+    reliability: 80
+    speed: 55
+
+  coder:
+    name: "qwen2.5-coder:7b-instruct-q4_K_M"
+    role: "code_generation_and_execution"
+    context_length: 32768
+    resident: false
+    vram_usage_mb: 4700
+    intelligence: 80
+    reliability: 75
+    speed: 55
+
+  vision:
+    name: "moondream"
+    fallback_name: "qwen2-vl:7b"
+    role: "image_layout_and_diagrams"
+    context_length: 8192
+    resident: false
+    vram_usage_mb: 1700
+    intelligence: 45
+    reliability: 70
+    speed: 85
+
+  embeddings:
+    name: "bge-small-en-v1.5"
+    device: "cpu"  # FORCED CPU to protect GPU VRAM
+    intelligence: 60
+    reliability: 90
+    speed: 95

@@ -10,11 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ModelsRouteImport } from './routes/models'
+import { Route as ModelsBreakdownRouteImport } from './routes/models-breakdown'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -22,31 +36,65 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModelsRoute = ModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModelsBreakdownRoute = ModelsBreakdownRouteImport.update({
+  id: '/models-breakdown',
+  path: '/models-breakdown',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/audit': typeof AuditRoute
   '/login': typeof LoginRoute
+  '/models': typeof ModelsRoute
+  '/models-breakdown': typeof ModelsBreakdownRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/audit': typeof AuditRoute
   '/login': typeof LoginRoute
+  '/models': typeof ModelsRoute
+  '/models-breakdown': typeof ModelsBreakdownRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/audit': typeof AuditRoute
   '/login': typeof LoginRoute
+  '/models': typeof ModelsRoute
+  '/models-breakdown': typeof ModelsBreakdownRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login'
+  fullPaths:
+    '/' | '/analytics' | '/audit' | '/login' | '/models' | '/models-breakdown'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login'
-  id: '__root__' | '/' | '/login'
+  to: '/' | '/analytics' | '/audit' | '/login' | '/models' | '/models-breakdown'
+  id:
+    | '__root__'
+    | '/'
+    | '/analytics'
+    | '/audit'
+    | '/login'
+    | '/models'
+    | '/models-breakdown'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalyticsRoute: typeof AnalyticsRoute
+  AuditRoute: typeof AuditRoute
   LoginRoute: typeof LoginRoute
+  ModelsRoute: typeof ModelsRoute
+  ModelsBreakdownRoute: typeof ModelsBreakdownRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +106,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -65,12 +127,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/models': {
+      id: '/models'
+      path: '/models'
+      fullPath: '/models'
+      preLoaderRoute: typeof ModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/models-breakdown': {
+      id: '/models-breakdown'
+      path: '/models-breakdown'
+      fullPath: '/models-breakdown'
+      preLoaderRoute: typeof ModelsBreakdownRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalyticsRoute: AnalyticsRoute,
+  AuditRoute: AuditRoute,
   LoginRoute: LoginRoute,
+  ModelsRoute: ModelsRoute,
+  ModelsBreakdownRoute: ModelsBreakdownRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

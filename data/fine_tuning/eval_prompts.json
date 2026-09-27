@@ -1,0 +1,162 @@
+[
+  {
+    "id": "eval_001",
+    "category": "boiler_inspection",
+    "standard": "OISD-STD-131",
+    "prompt": "What is the acceptable pressure limit for a Class 1 boiler according to OISD-STD-131?",
+    "expected_keywords": ["15.0 bar", "Class 1", "design temperature", "maximum allowable working pressure"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_002",
+    "category": "fire_protection",
+    "standard": "OISD-STD-116",
+    "prompt": "Per OISD-STD-116, what fire protection facilities are mandatory for a petroleum refinery processing >5 MMTPA?",
+    "expected_keywords": ["fire water system", "hydrant system", "monitor", "foam system", "pump capacity", "reservoir"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_003",
+    "category": "work_permit",
+    "standard": "OISD-STD-105",
+    "prompt": "Describe the work permit system workflow for hot work in a hydrocarbon area per OISD-STD-105.",
+    "expected_keywords": ["hot work permit", "gas test", "fire watch", "permit issuer", "area operator", "validity", "renewal"],
+    "difficulty": "procedural"
+  },
+  {
+    "id": "eval_004",
+    "category": "pressure_vessel",
+    "standard": "API 510",
+    "prompt": "What is the required safety valve set pressure as a percentage of certified working pressure per API 510?",
+    "expected_keywords": ["110%", "set pressure", "certified working pressure", "accumulation", "MAWP"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_005",
+    "category": "inspection_intervals",
+    "standard": "OISD-STD-131",
+    "prompt": "List the inspection intervals for pressure vessel internal and external inspection per OISD-STD-131.",
+    "expected_keywords": ["internal inspection", "external inspection", "interval", "years", "risk-based", "RBI"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_006",
+    "category": "fire_water",
+    "standard": "OISD-STD-116",
+    "prompt": "What is the minimum fire water reservoir capacity required for a refinery per OISD-STD-116?",
+    "expected_keywords": ["reservoir", "capacity", "hours", "m3", "fire water", "dedicated"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_007",
+    "category": "boiler_safety",
+    "standard": "OISD-STD-131",
+    "prompt": "What are the requirements for safety valve testing and certification frequency per OISD-STD-131?",
+    "expected_keywords": ["safety valve", "testing", "certification", "frequency", "authorized agency", "records"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_008",
+    "category": "hot_work",
+    "standard": "OISD-STD-105",
+    "prompt": "What gas testing requirements must be met before issuing a hot work permit in a hydrocarbon area?",
+    "expected_keywords": ["gas test", "LEL", "oxygen", "toxic gas", "continuous monitoring", "explosimeter", "before and during"],
+    "difficulty": "procedural"
+  },
+  {
+    "id": "eval_009",
+    "category": "pressure_relief",
+    "standard": "API 510",
+    "prompt": "Explain the pressure relief device sizing methodology for pressure vessels per API 510 / ASME Section VIII.",
+    "expected_keywords": ["relief valve", "sizing", "orifice", "API 520", "ASME VIII", "capacity", "accumulation"],
+    "difficulty": "technical"
+  },
+  {
+    "id": "eval_010",
+    "category": "piping_inspection",
+    "standard": "ASME B31.3",
+    "prompt": "What are the inspection requirements for Category M fluid service piping per ASME B31.3?",
+    "expected_keywords": ["Category M", "toxic", "100%", "radiography", "examination", "NDT", "initial"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_011",
+    "category": "storage_tank",
+    "standard": "OISD-STD-116",
+    "prompt": "What foam system requirements apply to floating roof storage tanks for crude oil per OISD-STD-116?",
+    "expected_keywords": ["foam", "floating roof", "rim seal", "application rate", "duration", "foam chamber"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_012",
+    "category": "confined_space",
+    "standard": "OISD-STD-105",
+    "prompt": "Describe the confined space entry permit requirements and atmospheric testing protocol per OISD-STD-105.",
+    "expected_keywords": ["confined space", "entry permit", "atmospheric testing", "oxygen", "LEL", "H2S", "ventilation", "standby"],
+    "difficulty": "procedural"
+  },
+  {
+    "id": "eval_013",
+    "category": "corrosion",
+    "standard": "API 510",
+    "prompt": "How is the minimum required thickness calculated for a corroded pressure vessel shell per API 510?",
+    "expected_keywords": ["minimum thickness", "corrosion allowance", "tmin", "corrosion rate", "remaining life", "inspection interval"],
+    "difficulty": "technical"
+  },
+  {
+    "id": "eval_014",
+    "category": "fire_pump",
+    "standard": "OISD-STD-116",
+    "prompt": "What are the fire pump capacity and redundancy requirements for a major refinery per OISD-STD-116?",
+    "expected_keywords": ["fire pump", "capacity", "m3/hr", "redundancy", "diesel", "electric", "jockey pump", "auto start"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_015",
+    "category": "ndt",
+    "standard": "ASME BPVC",
+    "prompt": "What non-destructive testing methods are accepted for pressure vessel weld inspection per ASME BPVC Section V?",
+    "expected_keywords": ["RT", "UT", "MT", "PT", "VT", "radiography", "ultrasonic", "magnetic particle", "penetrant", "visual"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_016",
+    "category": "emergency_response",
+    "standard": "OISD-STD-116",
+    "prompt": "What is the required emergency response time for fire brigade arrival at incident site per OISD-STD-116?",
+    "expected_keywords": ["response time", "minutes", "fire brigade", "incident", "mutual aid", "communication"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_017",
+    "category": "material_verification",
+    "standard": "API 510",
+    "prompt": "What is Positive Material Identification (PMI) and when is it required per API 510?",
+    "expected_keywords": ["PMI", "Positive Material Identification", "XRF", "OES", "verification", "carbon equivalent", "welding"],
+    "difficulty": "technical"
+  },
+  {
+    "id": "eval_018",
+    "category": "boiler_water",
+    "standard": "OISD-STD-131",
+    "prompt": "What are the boiler feed water quality limits (pH, conductivity, dissolved oxygen) per OISD-STD-131?",
+    "expected_keywords": ["feed water", "pH", "conductivity", "dissolved oxygen", "phosphate", "hydrazine", "limits"],
+    "difficulty": "specific"
+  },
+  {
+    "id": "eval_019",
+    "category": "flare_system",
+    "standard": "OISD-STD-116",
+    "prompt": "Describe the flare system design requirements for emergency pressure relief per OISD-STD-116.",
+    "expected_keywords": ["flare", "smokeless", "capacity", "purge gas", "pilot", "knockout drum", "liquid seal", "radiation"],
+    "difficulty": "technical"
+  },
+  {
+    "id": "eval_020",
+    "category": "integrity_operating_window",
+    "standard": "API 510 / API 581",
+    "prompt": "What is an Integrity Operating Window (IOW) and how is it used in Risk-Based Inspection per API 581?",
+    "expected_keywords": ["IOW", "Integrity Operating Window", "limits", "deviation", "RBI", "API 581", "risk", "mitigation"],
+    "difficulty": "technical"
+  }
+]

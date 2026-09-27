@@ -1,6 +1,6 @@
 // src/lib/agent/useAgentStore.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActiveModel, NetworkEvent, TaskState, ThreadItem, TraceStep, TraceStepKind } from "./types";
+import type { ActiveModel, NetworkEvent, TaskState, ThreadItem, TraceStep, TraceStepKind, RoutingWeights, PromptCompressionConfig } from "./types";
 
 const API_BASE = "http://127.0.0.1:8000";
 
@@ -19,11 +19,15 @@ export interface AgentStore {
   models: ActiveModel[];
   kbDocCount: number;
   activeApprovalId: string | null;
+  routingWeights: RoutingWeights;
+  promptCompression: PromptCompressionConfig;
   sendTask: (text: string, attachments: string[], files?: File[]) => Promise<void>;
   approve: (approvalId: string) => Promise<void>;
-  reject: (approvalId: string, reason: string) => void;
+  reject: (approvalId: string, reason: string) => Promise<void>;
   reset: () => void;
   ingestDocument: () => void;
+  setRoutingWeights: (weights: RoutingWeights) => void;
+  setPromptCompression: (config: PromptCompressionConfig) => void;
 }
 
 const mapKind = (type: string): TraceStepKind => {
@@ -36,6 +40,16 @@ const mapKind = (type: string): TraceStepKind => {
   }
 };
 
+const extractMode = (taskType: string, modelUsed?: string, output?: string): string | undefined => {
+  // code_execution tasks run in sandbox - extract mode from output or model
+  if (taskType === "code_execution") {
+    if (output && output.includes("[GVSOR_CONTAINER]")) return "gVisor Container";
+    if (output && output.includes("[LOCAL_SUBPROCESS_FALLBACK]")) return "Local Subprocess Fallback";
+    if (modelUsed?.includes("sandbox")) return "Sandbox Runner";
+  }
+  return undefined;
+};
+
 export function useAgentStore(): AgentStore {
   const [state, setState] = useState<TaskState>("idle");
   const [thread, setThread] = useState<ThreadItem[]>([]);
@@ -43,7 +57,32 @@ export function useAgentStore(): AgentStore {
   const [models, setModels] = useState<ActiveModel[]>([]);
   const [kbDocCount, setKbDocCount] = useState(1);
   const [activeApprovalId, setActiveApprovalId] = useState<string | null>(null);
+  const [routingWeights, setRoutingWeightsState] = useState<RoutingWeights>({
+    speed: 33,
+    reliability: 33,
+    intelligence: 34,
+  });
+  const [promptCompression, setPromptCompressionState] = useState<PromptCompressionConfig>({
+    mode: "Off",
+    repeated_blocks: false,
+    whitespace_cleanup: false,
+    json_tables: false,
+    superseded_file_reads: false,
+    tool_output_filter: false,
+    relevance_filter: false,
+    older_turns: false,
+    token_ceiling: false,
+  });
   const currentTaskIdRef = useRef<string | null>(null);
+  const approvalProcessingRef = useRef<Set<string>>(new Set());
+
+  const setRoutingWeights = useCallback((weights: RoutingWeights) => {
+    setRoutingWeightsState(weights);
+  }, []);
+
+  const setPromptCompression = useCallback((config: PromptCompressionConfig) => {
+    setPromptCompressionState(config);
+  }, []);
 
   // ── Fetch real models from backend on mount ──────────────────────
   useEffect(() => {
@@ -108,7 +147,7 @@ export function useAgentStore(): AgentStore {
     };
 
     poll(); // initial fetch
-    const interval = setInterval(poll, 3000);
+    const interval = setInterval(poll, 15000); // 15s interval per QA recommendation (was 3s)
     return () => clearInterval(interval);
   }, []);
 
@@ -181,12 +220,18 @@ export function useAgentStore(): AgentStore {
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({
           prompt: text,
-          files: uploadedFilenames.length > 0 ? uploadedFilenames : ["boiler_scan.pdf"],
+          files: uploadedFilenames,
+          routing_weights: routingWeights,
+          prompt_compression: promptCompression,
         }),
       });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
+        // Provide clear error if no files and task needs them
+        if (errData.detail && errData.detail.includes("No valid file found")) {
+          throw new Error("No files uploaded. Please upload a document (PDF/image) before submitting a vision_ocr task.");
+        }
         throw new Error(errData.detail || `Backend returned HTTP ${res.status}`);
       }
       const data = await res.json();
@@ -206,7 +251,8 @@ export function useAgentStore(): AgentStore {
           id: `step-${st.id}`,
           kind: mapKind(st.task_type),
           label: st.description,
-          model: resultEntry?.model_used || st.task_type === "code_execution" ? "qwen2.5-coder:7b → sandbox" : "qwen2.5:7b-instruct",
+          model: resultEntry?.model_used || (st.task_type === "code_execution" ? "qwen2.5:7b → sandbox" : "qwen2.5:7b"),
+          mode: extractMode(st.task_type, resultEntry?.model_used, resultEntry?.output),
           status: isDone ? "done" : isWaiting ? "running" : "pending",
           raw: resultEntry?.output,
         };
@@ -249,6 +295,12 @@ export function useAgentStore(): AgentStore {
   }, [pushNetwork, addDeliverable]);
 
   const approve = useCallback(async (approvalId: string) => {
+    // Prevent duplicate submissions - idempotency guard
+    if (approvalProcessingRef.current.has(approvalId)) {
+      return; // Already processing this approval
+    }
+    approvalProcessingRef.current.add(approvalId);
+
     // ── Instant UI feedback ─────────────────────────────────────────
     // Update state and mark approval card as decided BEFORE the API call
     setState("running");
@@ -354,10 +406,19 @@ export function useAgentStore(): AgentStore {
         ...prev,
         { id: uid("err"), type: "failure", text: `Error: ${err.message}`, at: Date.now() },
       ]);
+    } finally {
+      approvalProcessingRef.current.delete(approvalId);
     }
   }, [pushNetwork, addDeliverable]);
 
-  const reject = useCallback((approvalId: string, reason: string) => {
+  const reject = useCallback(async (approvalId: string, reason: string) => {
+    // Prevent duplicate submissions
+    if (approvalProcessingRef.current.has(approvalId)) {
+      return;
+    }
+    approvalProcessingRef.current.add(approvalId);
+
+    // ── Instant UI feedback ─────────────────────────────────────────
     setState("idle");
     setActiveApprovalId(null);
     setThread((prev) =>
@@ -371,12 +432,37 @@ export function useAgentStore(): AgentStore {
         return item;
       })
     );
-  }, []);
+
+    // Notify backend to release the checkpoint
+    pushNetwork(`127.0.0.1:8000/api/tasks/${approvalId}/approve`, `Operator rejected: ${reason}`);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/tasks/${approvalId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ approved: false }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Reject failed: HTTP ${res.status}`);
+      }
+      // Backend will mark task as rejected and resume to END
+    } catch (err: any) {
+      setThread((prev) => [
+        ...prev,
+        { id: uid("err"), type: "failure", text: `Reject notification failed: ${err.message}`, at: Date.now() },
+      ]);
+    } finally {
+      approvalProcessingRef.current.delete(approvalId);
+    }
+  }, [pushNetwork]);
 
   const reset = useCallback(() => {
     setState("idle");
     setThread([]);
     setActiveApprovalId(null);
+    approvalProcessingRef.current.clear();
   }, []);
 
   const ingestDocument = useCallback(() => {
@@ -396,10 +482,14 @@ export function useAgentStore(): AgentStore {
     models,
     kbDocCount,
     activeApprovalId,
+    routingWeights,
+    promptCompression,
     sendTask,
     approve,
     reject,
     reset,
     ingestDocument,
+    setRoutingWeights,
+    setPromptCompression,
   };
 }

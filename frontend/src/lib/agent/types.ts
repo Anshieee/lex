@@ -9,9 +9,28 @@ export interface TraceStep {
   kind: TraceStepKind;
   label: string;
   model?: string;
+  mode?: string;
   status: TraceStatus;
   raw?: string;
   startedAt?: number;
+}
+
+export interface RoutingWeights {
+  speed: number;
+  reliability: number;
+  intelligence: number;
+}
+
+export interface PromptCompressionConfig {
+  mode: "Off" | "Lossless" | "Standard" | "Aggressive";
+  repeated_blocks: boolean;
+  whitespace_cleanup: boolean;
+  json_tables: boolean;
+  superseded_file_reads: boolean;
+  tool_output_filter: boolean;
+  relevance_filter: boolean;
+  older_turns: boolean;
+  token_ceiling: boolean;
 }
 
 export interface ApprovalRequest {

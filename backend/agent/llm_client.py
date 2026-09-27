@@ -1,6 +1,7 @@
 # backend/agent/llm_client.py
 import json
 import httpx
+import asyncio
 from pydantic import BaseModel, ValidationError
 from typing import Type, TypeVar, Optional, Union
 
@@ -18,6 +19,8 @@ async def call_local_llm(
     response_model: Optional[Type[T]] = None,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.0,
+    max_retries: int = 3,
+    retry_delay: float = 2.0,
 ) -> Union[str, T]:
     messages = [
         {"role": "system", "content": system_prompt},
@@ -38,25 +41,38 @@ async def call_local_llm(
     if response_model is not None:
         payload["format"] = response_model.model_json_schema()
 
-    # Bump timeout to 300s to accommodate local CPU inference
-    async with httpx.AsyncClient(timeout=300.0) as client:
-        try:
-            res = await client.post(OLLAMA_URL, json=payload)
-            res.raise_for_status()
-        except httpx.RequestError as exc:
-            raise LLMClientError(f"Network error connecting to Ollama: {exc}") from exc
-        except httpx.HTTPStatusError as exc:
-            raise LLMClientError(f"Ollama returned HTTP {exc.response.status_code}: {exc.response.text}") from exc
+    # Retry logic for transient Ollama failures
+    last_exception = None
+    for attempt in range(max_retries):
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            try:
+                res = await client.post(OLLAMA_URL, json=payload)
+                res.raise_for_status()
+            except httpx.RequestError as exc:
+                last_exception = exc
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                    continue
+                raise LLMClientError(f"Network error connecting to Ollama after {max_retries} retries: {exc}") from exc
+            except httpx.HTTPStatusError as exc:
+                last_exception = exc
+                if exc.response.status_code >= 500 and attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay * (attempt + 1))
+                    continue
+                raise LLMClientError(f"Ollama returned HTTP {exc.response.status_code}: {exc.response.text}") from exc
 
-    data = res.json()
-    message_content = data.get("message", {}).get("content", "").strip()
+        data = res.json()
+        message_content = data.get("message", {}).get("content", "").strip()
 
-    if response_model is not None:
-        try:
-            return response_model.model_validate_json(message_content)
-        except ValidationError as val_err:
-            raise LLMClientError(
-                f"Model output failed validation: {val_err}\nRaw output: {message_content}"
-            ) from val_err
+        if response_model is not None:
+            try:
+                return response_model.model_validate_json(message_content)
+            except ValidationError as val_err:
+                raise LLMClientError(
+                    f"Model output failed validation: {val_err}\nRaw output: {message_content}"
+                ) from val_err
 
-    return message_content
+        return message_content
+
+    # Should not reach here, but just in case
+    raise LLMClientError(f"Failed after {max_retries} attempts: {last_exception}")

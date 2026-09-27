@@ -1,4 +1,4 @@
-import { Boxes, Cpu, LogOut, Menu, PanelLeft } from "lucide-react";
+import { Boxes, Cpu, LogOut, Menu, PanelLeft, Settings, SlidersHorizontal } from "lucide-react";
 import { NetworkMonitor } from "./NetworkMonitor";
 import type { NetworkEvent, TaskState } from "@/lib/agent/types";
 
@@ -39,6 +39,8 @@ export function Header({
   onMenu,
   onModels,
   modelsOpen,
+  onSettings,
+  onChatSettings,
 }: {
   network: NetworkEvent[];
   outboundCount: number;
@@ -47,6 +49,8 @@ export function Header({
   onMenu: () => void;
   onModels: () => void;
   modelsOpen: boolean;
+  onSettings: () => void;
+  onChatSettings: () => void;
 }) {
   const s = stateLabel[state];
   const user = getUser();
@@ -100,6 +104,24 @@ export function Header({
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Menu className="h-4.5 w-4.5" aria-hidden="true" />
+        </button>
+        {/* Settings - Prompt Compression */}
+        <button
+          type="button"
+          aria-label="Open settings"
+          onClick={onSettings}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Settings className="h-4.5 w-4.5" aria-hidden="true" />
+        </button>
+        {/* Chat Settings */}
+        <button
+          type="button"
+          aria-label="Open chat settings"
+          onClick={onChatSettings}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <SlidersHorizontal className="h-4.5 w-4.5" aria-hidden="true" />
         </button>
         {/* Logout */}
         <button

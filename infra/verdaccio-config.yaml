@@ -1,0 +1,31 @@
+# infra/verdaccio-config.yaml
+# Verdaccio configuration for local NPM registry (air-gapped)
+# Run: verdaccio --config infra/verdaccio-config.yaml
+
+storage: ./verdaccio-storage
+auth:
+  htpasswd:
+    file: ./verdaccio-htpasswd
+uplinks:
+  # Disable all upstream registries for air-gapped operation
+  # npmjs:
+  #   url: https://registry.npmjs.org/
+packages:
+  '@lex/*':
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    # No proxy - fully offline
+  '**':
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    # No proxy - fully offline
+    # proxy: npmjs
+
+logs:
+  - {type: stdout, format: pretty, level: http}
+  - {type: file, path: ./verdaccio.log, level: info}
+
+listen: 0.0.0.0:4873
+max_body_size: 100mb
