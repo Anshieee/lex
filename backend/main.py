@@ -22,6 +22,8 @@ from backend.auth import (
     init_user_db, authenticate_user, create_token,
     get_current_user, require_admin,
 )
+from backend.auth_mfa import router as auth_mfa_router, init_mfa_db
+from backend.reports import router as reports_router
 from backend.agent.schemas import RoutingWeights, PromptCompressionConfig
 from backend.agent.model_registry import calculate_routing_scores, check_ollama_models
 
@@ -35,6 +37,9 @@ async def lifespan(app: FastAPI):
 
     # Initialize auth user database
     init_user_db()
+
+    # Initialize MFA database
+    init_mfa_db()
 
     # Initialize table schema and create checkpointer
     async with AsyncSqliteSaver.from_conn_string("data/workbench_state.db") as checkpointer:
@@ -58,6 +63,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_mfa_router)
+app.include_router(reports_router)
 
 class SubmitTaskRequest(BaseModel):
     prompt: str
@@ -86,27 +94,29 @@ async def root():
     return {"status": "online", "docs": "/docs"}
 
 # ── Auth Endpoints ───────────────────────────────────────────────────
-
-@app.post("/api/auth/login", response_model=TokenResponse)
-async def login(req: LoginRequest):
-    """Authenticate user against local SQLite store and return JWT."""
-    user = authenticate_user(req.username, req.password)
-    if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid username or password",
-        )
-    token = create_token(user)
-    log_step(
-        task_id="auth",
-        step_type="login",
-        input_summary=f"User '{req.username}' logged in",
-        user=req.username,
-    )
-    return TokenResponse(
-        access_token=token,
-        user=UserInfo(**user),
-    )
+# NOTE: /api/auth/login is now handled by auth_mfa.router (includes MFA support)
+# Old login endpoint below is kept for reference but commented out to avoid route conflict
+#
+# @app.post("/api/auth/login", response_model=TokenResponse)
+# async def login(req: LoginRequest):
+#     """Authenticate user against local SQLite store and return JWT."""
+#     user = authenticate_user(req.username, req.password)
+#     if user is None:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid username or password",
+#         )
+#     token = create_token(user)
+#     log_step(
+#         task_id="auth",
+#         step_type="login",
+#         input_summary=f"User '{req.username}' logged in",
+#         user=req.username,
+#     )
+#     return TokenResponse(
+#         access_token=token,
+#         user=UserInfo(**user),
+#     )
 
 @app.get("/api/auth/me", response_model=UserInfo)
 async def get_me(user: dict = Depends(get_current_user)):
@@ -703,3 +713,11 @@ async def get_model_stats(hours: int = 24, user: dict = Depends(require_admin)):
         }
 
     return {"models": models}
+
+# Add audit verify route after audit log download
+@app.get("/api/audit/verify")
+async def verify_audit_chain(user: dict = Depends(require_admin)):
+    """Verify the audit chain integrity. Admin only."""
+    from backend.tools.audit_chain import verify_chain
+    result = verify_chain()
+    return result

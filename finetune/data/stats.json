@@ -1,0 +1,33 @@
+{
+  "source": "Indian Petroleum & Natural Gas Statistics 2024-25 (MoPNG, Govt of India)",
+  "ocr_pages": 298,
+  "usable_tables": 55,
+  "train_tables": 41,
+  "test_tables": [
+    "IV.4",
+    "V.14",
+    "VI.2",
+    "page-178",
+    "page-35",
+    "page-60",
+    "page-62",
+    "page-64",
+    "page-77",
+    "page-93",
+    "page-94"
+  ],
+  "train_samples": 2441,
+  "test_samples": 822,
+  "train_class_dist": {
+    "STRONG_GROWTH": 962,
+    "SEVERE_DECLINE": 719,
+    "MODERATE_GROWTH": 547,
+    "MODERATE_DECLINE": 213
+  },
+  "test_class_dist": {
+    "SEVERE_DECLINE": 226,
+    "MODERATE_DECLINE": 117,
+    "MODERATE_GROWTH": 203,
+    "STRONG_GROWTH": 276
+  }
+}

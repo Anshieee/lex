@@ -50,14 +50,21 @@ def run_code_in_sandbox(
                 print(f"[Sandbox Notice] Docker execution bypassed ({e}). Falling back to local runner.")
 
         # 2. Fallback: Local restricted subprocess
+        # Use the current Python interpreter to ensure it exists
+        python_exe = os.environ.get("SANDBOX_PYTHON") or os.path.join(
+            os.path.dirname(os.sys.executable), "python3.11"
+        )
+        if not os.path.exists(python_exe):
+            python_exe = os.sys.executable
+
         clean_env = {
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "PATH": os.path.dirname(python_exe) + ":" + os.environ.get("PATH", "/usr/bin:/bin"),
             "PYTHONUNBUFFERED": "1"
         }
 
         try:
             proc = subprocess.run(
-                ["python3", script_path],
+                [python_exe, script_path],
                 capture_output=True,
                 text=True,
                 timeout=timeout_seconds,

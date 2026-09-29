@@ -32,6 +32,7 @@ from agent.agent_graph import (
     build_agent_graph,
 )
 from agent.mock_llm_client import call_mock_llm
+from langgraph.types import Command
 
 
 # ============================================================================
@@ -304,10 +305,9 @@ async def test_full_graph_execution_mock():
     final_state = await graph.ainvoke(initial_state, config=config)
 
     # The graph stops at approval_gate because code_execution requires approval
-    # Resume by invoking again with the same thread_id (simulates human approval)
+    # Resume the interrupted graph (simulates human approval)
     if final_state.get("needs_human_approval") and final_state.get("current_subtask"):
-        # Simulate approval by invoking again
-        final_state = await graph.ainvoke(None, config=config)
+        final_state = await graph.ainvoke(Command(resume=True), config=config)
 
     # Verify completion
     assert final_state["final_output"] is not None, f"Expected final_output, got {final_state.get('final_output')}"
@@ -457,6 +457,11 @@ async def test_multi_model_switch_context_preservation():
 
     config = {"configurable": {"thread_id": "test-multi-switch-thread"}}
     final_state = await graph.ainvoke(initial_state, config=config)
+
+    # The planner may emit a code_execution subtask requiring human approval,
+    # which interrupts the graph before synthesize. Resume to complete it.
+    if final_state.get("needs_human_approval"):
+        final_state = await graph.ainvoke(Command(resume=True), config=config)
 
     # Verify multiple model types were used
     models_used = set(r["model_used"] for r in final_state["results"])

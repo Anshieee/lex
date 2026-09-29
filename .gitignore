@@ -70,3 +70,18 @@ venv/
 
 
 
+docs/fine-tune/*.pdf
+data/fine_tuning/raw/
+data/.jwt_secret
+data/.jwt_secret
+
+# Frontend Sparkle
+frontend-sparkle/node_modules/
+frontend-sparkle/dist/
+
+# Prevent secret leakage everywhere
+**/.jwt_secret
+
+# Large test files & npm extract artifacts
+*.pdf
+package/

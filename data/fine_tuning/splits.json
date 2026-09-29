@@ -1,0 +1,26 @@
+{
+  "total_samples": 0,
+  "train_count": 0,
+  "val_count": 0,
+  "train_ratio": 0.8,
+  "seed": 42,
+  "standards_distribution": {
+    "OISD-STD-105": {"train": 0, "val": 0, "total": 0},
+    "OISD-STD-116": {"train": 0, "val": 0, "total": 0},
+    "OISD-STD-131": {"train": 0, "val": 0, "total": 0},
+    "API 510": {"train": 0, "val": 0, "total": 0}
+  },
+  "categories_distribution": {},
+  "generated_at": "2026-09-29T04:45:00Z",
+  "status": "PENDING - train.jsonl and val.jsonl not yet generated. Run scripts/convert_format.py after synthetic QA generation.",
+  "leakage_check": {
+    "last_run": "2026-09-29T04:45:00Z",
+    "eval_prompts_checked": 20,
+    "train_samples": 0,
+    "val_samples": 0,
+    "threshold": 0.85,
+    "leakage_found": false,
+    "report_file": "leakage_report.json"
+  },
+  "notes": "Counts will be populated after running scripts/convert_format.py on synthetic_qa.jsonl and any Hugging Face datasets. Leakage check passed (no train/val data to check against)."
+}

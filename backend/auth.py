@@ -6,6 +6,7 @@ All user data stays on-premise in SQLite — zero external auth services.
 import os
 import sqlite3
 import time
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -16,10 +17,32 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 # ── Config ───────────────────────────────────────────────────────────
-JWT_SECRET = os.environ.get("LEX_JWT_SECRET", "lex-sovereign-workbench-secret-key-change-in-prod")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 24
 DB_PATH = "data/users.db"
+JWT_SECRET_FILE = "data/.jwt_secret"
+
+
+def get_jwt_secret() -> str:
+    """Get JWT secret from env or persisted file; never use hardcoded default."""
+    secret = os.environ.get("LEX_JWT_SECRET")
+    if secret:
+        return secret
+    # Try to read from persisted file
+    os.makedirs(os.path.dirname(JWT_SECRET_FILE), exist_ok=True)
+    if os.path.exists(JWT_SECRET_FILE):
+        with open(JWT_SECRET_FILE, "r") as f:
+            return f.read().strip()
+    # Generate new secret and persist (mode 0600)
+    new_secret = secrets.token_urlsafe(48)
+    with open(JWT_SECRET_FILE, "w") as f:
+        f.write(new_secret)
+    os.chmod(JWT_SECRET_FILE, 0o600)
+    return new_secret
+
+
+# For backward compatibility — use the function
+JWT_SECRET = get_jwt_secret()
 
 security = HTTPBearer(auto_error=False)
 
@@ -138,7 +161,9 @@ def decode_token(token: str) -> Optional[dict]:
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
-    """Extract and validate the current user from the Authorization header."""
+    """Extract and validate the current user from the Authorization header.
+    Rejects tokens with scope 'enroll' or 'mfa' — only full access tokens allowed.
+    """
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -151,6 +176,15 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired or invalid",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Reject scoped tokens (enroll/mfa) on standard endpoints
+    token_scope = payload.get("scope")
+    if token_scope in ("enroll", "mfa"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid token scope for this endpoint",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

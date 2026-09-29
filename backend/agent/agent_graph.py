@@ -7,6 +7,7 @@ import sqlite3
 import time
 from typing import TypedDict, Annotated, List, Optional, Dict, Any
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 from docx import Document
 from openpyxl import Workbook
 from backend.tools.audit_logger import log_step
@@ -317,7 +318,7 @@ def route_after_router(state: AgentState) -> str:
         return "approval_gate"
     return "execute_tool"
 
-def build_agent_graph(checkpointer=None):
+def build_agent_graph(checkpointer=MemorySaver()):
     workflow = StateGraph(AgentState)
 
     workflow.add_node("planner", planner_node)

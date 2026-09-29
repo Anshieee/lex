@@ -1,0 +1,9 @@
+{
+  "eval_prompts_checked": 20,
+  "train_samples": 0,
+  "val_samples": 0,
+  "threshold": 0.85,
+  "exact_matches": [],
+  "high_similarity": [],
+  "leakage_found": false
+}

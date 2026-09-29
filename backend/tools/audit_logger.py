@@ -10,7 +10,11 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-LOG_PATH = "data/audit_log.jsonl"
+# Import chained logger
+from backend.tools.audit_chain import log_step_chained, verify_chain
+
+# Shared config
+from backend.tools.audit_config import LOG_PATH
 
 
 def _ensure_log_dir():
@@ -28,24 +32,19 @@ def log_step(
     user: str = "",
     extra: Optional[Dict[str, Any]] = None,
 ):
-    """Append a structured audit entry to the JSONL log file."""
-    _ensure_log_dir()
-    entry = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "task_id": task_id,
-        "step_type": step_type,
-        "model_used": model_used,
-        "duration_ms": round(duration_ms, 1),
-        "input_summary": input_summary[:500],  # cap to prevent log bloat
-        "output_summary": output_summary[:500],
-        "status": status,
-        "user": user,
-    }
-    if extra:
-        entry["extra"] = extra
-
-    with open(LOG_PATH, "a") as f:
-        f.write(json.dumps(entry) + "\n")
+    """Append a structured audit entry to the JSONL log file (now chained)."""
+    # Delegate to chained implementation
+    log_step_chained(
+        task_id=task_id,
+        step_type=step_type,
+        model_used=model_used,
+        duration_ms=duration_ms,
+        input_summary=input_summary,
+        output_summary=output_summary,
+        status=status,
+        user=user,
+        extra=extra,
+    )
 
 
 def get_recent_entries(n: int = 50) -> list:
@@ -67,3 +66,13 @@ def get_recent_entries(n: int = 50) -> list:
 def get_log_path() -> str:
     """Return the absolute path to the log file for downloads."""
     return os.path.abspath(LOG_PATH)
+
+
+# Re-export verify_chain for the CLI and route
+__all__ = [
+    "LOG_PATH",
+    "log_step",
+    "get_recent_entries",
+    "get_log_path",
+    "verify_chain",
+]
